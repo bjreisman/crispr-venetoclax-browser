@@ -12,15 +12,17 @@ Target: public repository `bjreisman/crispr-venetoclax-browser`, with MIT-licens
 - [x] Generate cache byte sizes and SHA-256 hashes.
 - [x] Export an explicit file list to a clean publication checkout, inspect it for secrets and oversized files, and preserve the original working folder/history.
 - [x] Run cache, loader, and app-startup checks in a directory containing only public files.
-- [ ] Create the public repository, push the code snapshot, publish v0.1.0 with four cache assets, and verify the download script and app from a fresh GitHub clone.
+- [x] Create the public repository, push the code snapshot, publish v0.1.0 with four cache assets, and verify the download script and app from a fresh GitHub clone.
 
 The local `.git/config` is a OneDrive cloud placeholder and local Git reads time out. If it remains unavailable, use a clean initial public snapshot instead of modifying or uploading unverified historical commits. The research folder and existing Git history stay intact.
+
+Published: [repository](https://github.com/bjreisman/crispr-venetoclax-browser) and [v0.1.0 data release](https://github.com/bjreisman/crispr-venetoclax-browser/releases/tag/v0.1.0). All four assets were downloaded from GitHub into a fresh clone and matched the recorded hashes; the app/server checks and independent localhost startup passed.
 
 ## 2. Improve reproducibility after the initial upload
 
 - Automate acquisition of source inputs using stable download locations, versions, and source checksums; the first release documents manual acquisition.
 - Check the locked dependency installation on another machine or CI runner. Recording a lockfile is separate from proving cross-platform installation.
-- Record dated analysis releases and changelogs. Move growing binary caches to release assets or a data archive if dataset distribution needs change.
+- Record dated analysis releases and changelogs. Keep binary caches in versioned release assets, or move them to a data archive if distribution needs change.
 - Add an automated check for cache/schema compatibility and startup when updating code or prepared data.
 
 ## 3. Scientific improvements to pursue separately
