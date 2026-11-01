@@ -1,0 +1,48 @@
+.DS_Store
+.Rhistory
+.RData
+.Rproj.user/
+.venv-nakao2023/
+data/processed/nakao2023/raw/
+scripts/vendor/__pycache__/
+
+# Deployment/account metadata
+rsconnect/
+
+# Local raw source downloads and PDFs
+Chen2019/
+Deng2022/
+Glytsou2023/
+Guieze2019/
+Lin2019/
+Nechiporuk2019/
+Portelinha2024/
+He2026/
+Nakao2023/
+Colville2023/
+Wang2023/
+ClaudeCatalog.md
+PROJECT_REVIEW.md
+mockups/
+
+# Credentials and local configuration
+.Renviron
+.Renviron.*
+.env
+.env.*
+*.pem
+*.key
+renv/library/
+renv/staging/
+
+# Large/generated tabular files
+data/external/
+data/processed/*.csv
+
+# Prepared caches are distributed as versioned GitHub Release downloads
+data/processed/*.rds
+
+# Rebuilt analysis intermediates; portable provenance is in data/metadata/
+data/processed/nakao2023/
+__pycache__/
+*.pyc

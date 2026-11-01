@@ -1,0 +1,136 @@
+{
+  "study": "Nakao2023",
+  "generated_at_utc": "2026-08-26T01:07:40.306569+00:00",
+  "source_workbook": "Nakao2023/41375_2023_1879_MOESM2_ESM.xlsx",
+  "source_workbook_sha256": "53d98aafa672a69fba1581728f1bd55957e9f16f48c971e5da9d32cdb808cd0e",
+  "source_sheets": {
+    "Supplemental Table 1": {
+      "rows": 125682,
+      "genes": 22360,
+      "columns": 6
+    },
+    "Supplemental Table 2": {
+      "rows": 79633,
+      "genes": 20674,
+      "columns": 8
+    }
+  },
+  "browser_primary_score": "DrugZ normZ; direction-aware p/FDR/rank",
+  "drugz": {
+    "version": "1.1.0.2 build 116",
+    "normalization": 10000000,
+    "pseudocount": 5,
+    "half_window_size": 500
+  },
+  "mageck": {
+    "version": "0.5.9.5",
+    "normalization": "median"
+  },
+  "commands": {
+    "march5_wt_venetoclax": {
+      "drugz": [
+        ".venv-nakao2023/bin/python",
+        "scripts/vendor/drugz.py",
+        "-i",
+        "data/processed/nakao2023/raw/nakao2023_table1_counts.tsv",
+        "-o",
+        "data/processed/nakao2023/raw/march5_wt_venetoclax.drugz.tsv",
+        "-f",
+        "data/processed/nakao2023/raw/march5_wt_venetoclax.drugz_foldchange.tsv",
+        "-c",
+        "WT_output",
+        "-x",
+        "WT_VEN",
+        "-I",
+        "0"
+      ],
+      "mageck": [
+        ".venv-nakao2023/bin/python",
+        "-c",
+        "from mageck.argsParser import crisprseq_parseargs; crisprseq_parseargs()",
+        "mle",
+        "-k",
+        "data/processed/nakao2023/raw/nakao2023_table1_counts.tsv",
+        "-d",
+        "data/processed/nakao2023/raw/march5_wt_venetoclax.design.tsv",
+        "-n",
+        "data/processed/nakao2023/raw/march5_wt_venetoclax.mageck",
+        "--norm-method",
+        "median",
+        "--threads",
+        "4"
+      ]
+    },
+    "march5_wt_s63845": {
+      "drugz": [
+        ".venv-nakao2023/bin/python",
+        "scripts/vendor/drugz.py",
+        "-i",
+        "data/processed/nakao2023/raw/nakao2023_table1_counts.tsv",
+        "-o",
+        "data/processed/nakao2023/raw/march5_wt_s63845.drugz.tsv",
+        "-f",
+        "data/processed/nakao2023/raw/march5_wt_s63845.drugz_foldchange.tsv",
+        "-c",
+        "WT_output",
+        "-x",
+        "WT_S63845",
+        "-I",
+        "0"
+      ],
+      "mageck": [
+        ".venv-nakao2023/bin/python",
+        "-c",
+        "from mageck.argsParser import crisprseq_parseargs; crisprseq_parseargs()",
+        "mle",
+        "-k",
+        "data/processed/nakao2023/raw/nakao2023_table1_counts.tsv",
+        "-d",
+        "data/processed/nakao2023/raw/march5_wt_s63845.design.tsv",
+        "-n",
+        "data/processed/nakao2023/raw/march5_wt_s63845.mageck",
+        "--norm-method",
+        "median",
+        "--threads",
+        "4"
+      ]
+    },
+    "march5_ko_venetoclax": {
+      "drugz": [
+        ".venv-nakao2023/bin/python",
+        "scripts/vendor/drugz.py",
+        "-i",
+        "data/processed/nakao2023/raw/nakao2023_table2_counts.tsv",
+        "-o",
+        "data/processed/nakao2023/raw/march5_ko_venetoclax.drugz.tsv",
+        "-f",
+        "data/processed/nakao2023/raw/march5_ko_venetoclax.drugz_foldchange.tsv",
+        "-c",
+        "March5KO_output_rep1,March5KO_output_rep2",
+        "-x",
+        "March5KO_VEN_rep1,March5KO_VEN_rep2",
+        "-I",
+        "0"
+      ],
+      "mageck": [
+        ".venv-nakao2023/bin/python",
+        "-c",
+        "from mageck.argsParser import crisprseq_parseargs; crisprseq_parseargs()",
+        "mle",
+        "-k",
+        "data/processed/nakao2023/raw/nakao2023_table2_counts.tsv",
+        "-d",
+        "data/processed/nakao2023/raw/march5_ko_venetoclax.design.tsv",
+        "-n",
+        "data/processed/nakao2023/raw/march5_ko_venetoclax.mageck",
+        "--norm-method",
+        "median",
+        "--threads",
+        "4"
+      ]
+    }
+  },
+  "result_rows": 60181,
+  "result_sha256": "564b1c101feb482791ab4fc63e9b7f5d7e80de95fc4e4d3e407654197b89ebe0",
+  "path_note": "Project-root absolute paths have been replaced by relative paths for the public copy. Source/output hashes and analysis values are unchanged. Raw files and the gene_results.tsv intermediate are omitted from the initial public snapshot; rebuild them from the source workbook."
+}

@@ -1,0 +1,115 @@
+ADDITIONAL SCREEN CANDIDATE AUDIT
+Checked: 2026-10-31
+
+Deliverable: additional_screen_candidates.csv (29 study/candidate entries).
+These are candidate STUDIES or evidence entries, not counts of independent
+screens. The catalog is separate from gene_scores and does not alter the
+current 19-condition inventory. Deployment cache: data/processed/
+additional_screen_candidates.rds. Rebuild with scripts/build_additional_screen_catalog.R.
+
+Scope
+Prioritize genetic perturbation screens of venetoclax/ABT-199 response in
+hematologic malignancies, including acquired-resistant models and drug
+combinations. Include CRISPR knockout, interference and activation; focused
+arrayed cDNA/ORF screens; and RNAi (siRNA or shRNA). Preserve related MCL1,
+BCL-XL, ABT-737, azacitidine and nonhematologic studies as explicit context.
+A validation experiment with a single gene is not automatically a new screen.
+
+Search sequence
+1. Started with the configured EndNote Research index. Searched reference
+metadata/abstracts using venetoclax AND screen (22 matches) and ABT-199 AND
+screen (4 matches), followed by broader perturbation queries, author/title
+queries, PDF-text searches and combined semantic/keyword search. Semantic
+search was available and used. Metadata searches alone missed relevant
+records subsequently confirmed by author/title lookup (e.g., Lin2024 #4421).
+Relevant indexed PDF sections were read; exact EndNote record and attachment
+IDs/page locators are retained in the catalog where used. No library reindex
+was performed; searches reflect the configured export/index, not the live
+EndNote database. Personal notes were discovery aids, not published evidence.
+
+2. Used the installed ncbi-entrez-skill with the user-specified research
+runtime. requests dependency check passed (2.32.5). Shell networking is
+restricted, so read-only PubMed requests ran with require_escalated network
+execution. Query:
+(venetoclax OR ABT-199 OR BH3-mimetic) AND
+(CRISPR OR siRNA OR RNAi OR shRNA OR overexpression) AND
+(screen OR screening) AND
+("1900/01/01"[Date - Publication] : "2026/10/31"[Date - Publication])
+Retrieved 160 records; titles were triaged and relevant candidates investigated.
+This was supplemented by targeted web searches, not treated as an exhaustive
+systematic-review search. Papers that omit screen terminology in their
+abstracts (e.g., short letters) can be missed by this query.
+
+3. Extended outward using publisher/PMC primary articles, supplementary-file
+listings, GEO, and BioGRID ORCS. Used ncbi-pmc-skill metadata and validated PMC
+full-text XML where accessible; reused verified local papers/indexed EndNote
+PDFs. Read Results/Methods and data-availability sections for screen design,
+treatment, endpoint, primary versus validation experiments, and overlap.
+A repository accession was not assumed to contain screen counts merely
+because it appears in a screen paper.
+
+4. Checked downloaded workbook structures for Sharon2019, Deng2022 and
+Ebner2023, and Yokoyama2026. Checked local Wang2023 and Colville2023 workbook
+sheets/headers. These were format inspections, not full QC or validated
+importers. Supplemental downloads remained in temporary storage; the core
+score cache was not changed. The catalog links to article/repository sources
+so these temporary files are not required by the browser.
+
+Priority groups
+15 direct-priority candidates/entries (including two provisional entries).
+5 related BH3/RNAi studies.
+7 broader supporting-context studies.
+2 overlapping reanalyses, explicitly excluded from new replication weight.
+
+Key data distinctions
+- Sharon: BioGRID ORCS Dataset/406 links an author-style MAGeCK workbook
+with gene-level statistics and LFC sheets. Day 8 is represented in a combined
+statistical-results sheet; never treat a significance score as an effect LFC.
+GSE136032 is RNA-seq, not verified CRISPR guide counts.
+- Deng: Supplementary Data 2 contains enriched sgRNAs; Supplementary Data 3
+contains counts for the #214 and #216 model screens. Current browser rows
+are expression context only. CRISPRa would be a new evidence arm of the same
+paper. Full gene-level analysis should use all measured targets, not only
+significant enriched guides.
+- Wang: Table S1 is already local and has two library arms with effect-only
+columns; no p-values/FDRs should be inferred. GSE199161 is described as RNA-seq,
+eCLIP and whole-exome data.
+- Ebner: arrayed competition assays and AUCs, with Figure 1B/S1C source sheets;
+pooled guide-count files are not the appropriate required input.
+- Stewart: Table S4 is legacy XLS (not XLSX); GSE291338 is the screen-count
+repository and GSE291339 is RNA-seq. The methods contain library naming versus
+Addgene-accession ambiguity; verify against count annotations before import.
+- Yokoyama: abstract emphasizes navitoclax, but the scored workbook explicitly
+has ED/DEL venetoclax, navitoclax and ABBV467 groups. Some gene symbols have
+Excel date-conversion corruption (e.g., 1-Dec); restore from stable identifiers
+or original annotation, not guesses. Main/supplementary methods still need
+checking before an independent-screen count or importer is finalized.
+- Cozzi: lncRNA targets require noncoding/TSS identifiers and a separate tested
+background. Two GEO accessions are cited; their assay mapping is not verified.
+- Lin2016: 37 pathway-activating cDNAs, GI50 in figures; not a genome-wide ORF
+screen and not a pooled-count analysis.
+- Li2026 PRMT9: final paper identity verified (PMID 42118690). Its 2024 ASH
+precursor describes focused PRMT inhibitor/shRNA BH3-priming assays plus
+reanalysis of older CRISPR data. Final methods not obtained; retain provisional
+status rather than calling it a new genome-wide CRISPR screen. GSE296895 is
+expression profiling. Final paper and precursor must not count twice.
+- ASH2025 ZBTB7A: a conference-level candidate; full-paper linkage and screen
+models/data remain unresolved. Not treated as an imported or counted screen.
+- La Vecchia OPA1: Results explicitly reanalyze prior Chen/Glytsou screens;
+new validation does not add independent discovery-screen replication.
+- PitViper: Biological resources and reference 10 trace the venetoclax example
+to Lin2019; a new analysis method is not a new biological screen.
+- Pauli, COX4I1 and Smith: primary discovery selections were cytarabine,
+baseline proliferation and DHA respectively; later venetoclax/BH3 validation
+does not change the discovery contrast.
+
+Remaining evidence gaps
+Catalog entries explicitly distinguish full-text sections read from abstract-
+only or supplement-only inspection. Numeric data not located means not
+located in the reviewed sources, not proven absent from the literature.
+Main PDFs and screening supplements are particularly useful for Li2026 PRMT9,
+Aka2021 kinome RNAi, and Mills2013 DHX9. Publisher/PMC API retrieval attempts
+were unsuccessful or unavailable for these full texts. Yokoyama2026 has a
+verified scored workbook but its full methods still need review. No data
+requests were sent to authors. No newly found score tables were merged into
+the browser's quantitative comparisons during this audit.

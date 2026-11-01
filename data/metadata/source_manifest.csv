@@ -1,0 +1,20 @@
+dataset,path,source_url,role,terms
+Lin2019,Lin2019/1-s2.0-S1550413119300117-mmc3.csv,https://pmc.ncbi.nlm.nih.gov/articles/PMC6506362/,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Chen2019,Chen2019/21598290cd190117-sup-216243_2_supp_5484296_pqktn1.xlsx,https://pmc.ncbi.nlm.nih.gov/articles/PMC6606342/,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Nechiporuk2019,Nechiporuk2019/21598290cd190125-sup-216310_2_table_5485035_pqlflj.xlsx,https://pmc.ncbi.nlm.nih.gov/articles/PMC6606338/,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Guieze2019,Guieze2019/1-s2.0-S1535610819303733-mmc3.xlsx,https://jourdainlab.org/wp-content/uploads/2023/03/Guieze_CancerCell_2019.pdf,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Guieze2019,Guieze2019/1-s2.0-S1535610819303733-mmc4.xlsx,https://jourdainlab.org/wp-content/uploads/2023/03/Guieze_CancerCell_2019.pdf,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Glytsou2023,Glytsou2023/cd-22-0601_supplementary_table_s1_suppst1.xlsx,https://pmc.ncbi.nlm.nih.gov/articles/PMC10330144/,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Deng2022,Deng2022/tables/2022-06-29-DE_gene_list_groupEµ-Myc_dCas9a-SAM_vs_B-ALL_GGiner.csv,https://doi.org/10.1038/s41467-022-32485-9,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Portelinha2024,Portelinha2024/jem_20231143_tables1.xlsx,https://pmc.ncbi.nlm.nih.gov/articles/PMC11380151/,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Portelinha2024,Portelinha2024/jem_20231143_tables2.xlsx,https://pmc.ncbi.nlm.nih.gov/articles/PMC11380151/,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Eide2023,data/external/eide2023/GSE216087_crispr_counts_for_geo.txt.gz,https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE216087,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+He2026,He2026/43018_2026_1184_MOESM2_ESM.xlsx,https://www.nature.com/articles/s43018-026-01184-5,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+He2026,He2026/43018_2026_1184_MOESM4_ESM.xlsx,https://www.nature.com/articles/s43018-026-01184-5,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+Nakao2023,Nakao2023/41375_2023_1879_MOESM2_ESM.xlsx,https://www.nature.com/articles/s41375-023-01879-z,gene-score build input,Upstream publication/data terms; not relicensed as MIT
+BeatAML2,data/external/beataml2/beataml_wv1to4_raw_inhibitor_v4_dbgap.txt,https://github.com/biodev/beataml2.0_data,external response context,CC BY 4.0; upstream LICENSE.txt
+BeatAML2,data/external/beataml2/beataml_waves1to4_norm_exp_dbgap.txt,https://github.com/biodev/beataml2.0_data,external expression context,CC BY 4.0; upstream LICENSE.txt
+DepMap Public 26Q1,data/external/depmap/Model_26Q1.csv,https://depmap.org/portal/data_page/,model annotations,DepMap dataset terms; not relicensed as MIT
+DepMap Public 26Q1,data/external/depmap/CRISPRGeneEffect_selected_26Q1.csv,https://depmap.org/portal/data_page/,selected model rows from CRISPRGeneEffect.csv,DepMap dataset terms; not relicensed as MIT
+Eide2023,data/external/eide2023/bcd-23-0014_table_s9_suppst9.xlsx,https://doi.org/10.1158/2643-3230.BCD-23-0014,external drug-response context,Upstream publication/data terms; not relicensed as MIT
+Zhang2024,data/external/zhang2024/41419_2024_6995_MOESM2_ESM.xlsx,https://doi.org/10.1038/s41419-024-06995-x,guide-library context; no scored screen,Upstream publication/data terms; not relicensed as MIT

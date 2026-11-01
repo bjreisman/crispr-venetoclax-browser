@@ -1,0 +1,9 @@
+# Pinned runtime for reproducible Nakao2023 CRISPR-screen re-analysis.
+# MAGeCK is not published to PyPI; this is the official SourceForge source
+# archive for the stable legacy release used by this re-analysis.
+mageck @ https://downloads.sourceforge.net/project/mageck/0.5/mageck-0.5.9.5.tar.gz
+numpy==1.26.4
+pandas==1.5.3
+scipy==1.14.1
+openpyxl==3.1.5
+six==1.16.0

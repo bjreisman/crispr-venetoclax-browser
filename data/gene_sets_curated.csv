@@ -1,0 +1,109 @@
+gene_set,category,gene_symbol
+BCL2 family anti-apoptotic,Apoptosis,BCL2
+BCL2 family anti-apoptotic,Apoptosis,MCL1
+BCL2 family anti-apoptotic,Apoptosis,BCL2L1
+BCL2 family anti-apoptotic,Apoptosis,BCL2L2
+BCL2 family anti-apoptotic,Apoptosis,BCL2A1
+BCL2 family pro-apoptotic,Apoptosis,BAX
+BCL2 family pro-apoptotic,Apoptosis,BAK1
+BCL2 family pro-apoptotic,Apoptosis,BID
+BCL2 family pro-apoptotic,Apoptosis,BAD
+BCL2 family pro-apoptotic,Apoptosis,BIK
+BCL2 family pro-apoptotic,Apoptosis,BMF
+BCL2 family pro-apoptotic,Apoptosis,HRK
+BCL2 family pro-apoptotic,Apoptosis,BBC3
+BCL2 family pro-apoptotic,Apoptosis,PMAIP1
+BCL2 family pro-apoptotic,Apoptosis,BCL2L11
+p53 apoptosis axis,Apoptosis,TP53
+p53 apoptosis axis,Apoptosis,BAX
+p53 apoptosis axis,Apoptosis,BBC3
+p53 apoptosis axis,Apoptosis,PMAIP1
+p53 apoptosis axis,Apoptosis,FAS
+p53 apoptosis axis,Apoptosis,CDKN1A
+p53 apoptosis axis,Apoptosis,MDM2
+p53 apoptosis axis,Apoptosis,BCL2L11
+Venetoclax resistance candidates,Integrated hits,MCL1
+Venetoclax resistance candidates,Integrated hits,BCL2L1
+Venetoclax resistance candidates,Integrated hits,BCL2A1
+Venetoclax resistance candidates,Integrated hits,CLPB
+Venetoclax resistance candidates,Integrated hits,SETD1B
+Venetoclax resistance candidates,Integrated hits,TP53
+Venetoclax resistance candidates,Integrated hits,BAX
+Venetoclax resistance candidates,Integrated hits,PMAIP1
+Venetoclax resistance candidates,Integrated hits,ZNF740
+Lin2019 heme biosynthesis,Metabolism,ALAS1
+Lin2019 heme biosynthesis,Metabolism,ALAS2
+Lin2019 heme biosynthesis,Metabolism,ALAD
+Lin2019 heme biosynthesis,Metabolism,HMBS
+Lin2019 heme biosynthesis,Metabolism,UROS
+Lin2019 heme biosynthesis,Metabolism,UROD
+Lin2019 heme biosynthesis,Metabolism,CPOX
+Lin2019 heme biosynthesis,Metabolism,PPOX
+Lin2019 heme biosynthesis,Metabolism,FECH
+Oxidative phosphorylation,Metabolism,NDUFA1
+Oxidative phosphorylation,Metabolism,NDUFA2
+Oxidative phosphorylation,Metabolism,NDUFB6
+Oxidative phosphorylation,Metabolism,SDHA
+Oxidative phosphorylation,Metabolism,SDHB
+Oxidative phosphorylation,Metabolism,UQCRC1
+Oxidative phosphorylation,Metabolism,UQCRC2
+Oxidative phosphorylation,Metabolism,COX4I1
+Oxidative phosphorylation,Metabolism,COX5A
+Oxidative phosphorylation,Metabolism,ATP5F1A
+Oxidative phosphorylation,Metabolism,ATP5F1B
+Oxidative phosphorylation,Metabolism,ATP5PO
+Mitochondrial dynamics and mitophagy,Mitochondria,MFN1
+Mitochondrial dynamics and mitophagy,Mitochondria,MFN2
+Mitochondrial dynamics and mitophagy,Mitochondria,OPA1
+Mitochondrial dynamics and mitophagy,Mitochondria,DNM1L
+Mitochondrial dynamics and mitophagy,Mitochondria,PINK1
+Mitochondrial dynamics and mitophagy,Mitochondria,PRKN
+Mitochondrial dynamics and mitophagy,Mitochondria,BNIP3
+Mitochondrial dynamics and mitophagy,Mitochondria,BNIP3L
+Mitochondrial dynamics and mitophagy,Mitochondria,FUNDC1
+Mitochondrial dynamics and mitophagy,Mitochondria,OPTN
+Monocytic differentiation,Disease context,CD14
+Monocytic differentiation,Disease context,LST1
+Monocytic differentiation,Disease context,FCGR3A
+Monocytic differentiation,Disease context,ITGAM
+Monocytic differentiation,Disease context,CSF1R
+Monocytic differentiation,Disease context,LILRB2
+Monocytic differentiation,Disease context,SPI1
+Monocytic differentiation,Disease context,CEBPA
+Monocytic differentiation,Disease context,CEBPB
+Monocytic differentiation,Disease context,IRF8
+Primitive AML program,Disease context,KIT
+Primitive AML program,Disease context,PROM1
+Primitive AML program,Disease context,CD34
+Primitive AML program,Disease context,GATA2
+Primitive AML program,Disease context,MECOM
+Primitive AML program,Disease context,HOXA9
+Primitive AML program,Disease context,MEIS1
+Primitive AML program,Disease context,PBX3
+MAPK/RAS signaling,Signaling,NRAS
+MAPK/RAS signaling,Signaling,KRAS
+MAPK/RAS signaling,Signaling,PTPN11
+MAPK/RAS signaling,Signaling,NF1
+MAPK/RAS signaling,Signaling,BRAF
+MAPK/RAS signaling,Signaling,RAF1
+MAPK/RAS signaling,Signaling,MAP2K1
+MAPK/RAS signaling,Signaling,MAP2K2
+MAPK/RAS signaling,Signaling,MAPK1
+MAPK/RAS signaling,Signaling,MAPK3
+JAK/STAT signaling,Signaling,JAK1
+JAK/STAT signaling,Signaling,JAK2
+JAK/STAT signaling,Signaling,STAT1
+JAK/STAT signaling,Signaling,STAT3
+JAK/STAT signaling,Signaling,STAT5A
+JAK/STAT signaling,Signaling,STAT5B
+JAK/STAT signaling,Signaling,SOCS1
+JAK/STAT signaling,Signaling,SOCS3
+MCL1 regulation and NOXA axis,Apoptosis,MCL1
+MCL1 regulation and NOXA axis,Apoptosis,PMAIP1
+MCL1 regulation and NOXA axis,Apoptosis,ZNF740
+MCL1 regulation and NOXA axis,Apoptosis,HSPA9
+MCL1 regulation and NOXA axis,Apoptosis,MARCH5
+MCL1 regulation and NOXA axis,Apoptosis,FBXW7
+MCL1 regulation and NOXA axis,Apoptosis,GSK3B
+MCL1 regulation and NOXA axis,Apoptosis,EIF2AK4
+MCL1 regulation and NOXA axis,Apoptosis,ATF4

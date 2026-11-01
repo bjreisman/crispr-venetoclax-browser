@@ -1,0 +1,15 @@
+*.pdf
+*.xlsx
+*.xls
+*.csv
+*.RData
+.DS_Store
+ClaudeCatalog.md
+Chen2019/
+Deng2022/
+Glytsou2023/
+Guieze2019/
+Lin2019/
+Nechiporuk2019/
+Portelinha2024/
+data/processed/gene_scores.csv

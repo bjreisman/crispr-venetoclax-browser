@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "Please cite this software and the underlying studies and dataset releases."
+title: "CRISPR Venetoclax Browser"
+type: software
+authors:
+  - family-names: Reisman
+    given-names: Benjamin
+repository-code: "https://github.com/bjreisman/crispr-venetoclax-browser"
+url: "https://github.com/bjreisman/crispr-venetoclax-browser"
+license: MIT
+abstract: "An exploratory R Shiny browser for published venetoclax resistance and sensitivity datasets."
