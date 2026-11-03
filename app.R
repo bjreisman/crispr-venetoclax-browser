@@ -7,6 +7,7 @@ library(readr)
 
 source("R/load_data.R")
 source("R/plots.R")
+source("R/screen_views.R")
 
 scores <- load_browser_data()
 depmap_crispr <- load_depmap_crispr()
@@ -21,6 +22,12 @@ beataml_expression <- external_context$beataml_expression
 beataml_gene_sets <- external_context$beataml_gene_sets
 eide_crispr_context <- external_context$eide_crispr
 zhang_library <- external_context$zhang_library
+
+screen_scores <- build_screen_scores(scores)
+screen_extra_group_choices <- c(
+  "Other BH3 mimetics" = "Other BH3 mimetics",
+  "ORF, priming, and expression assays" = "Other assays (direction not comparable)"
+)
 
 experiment_stats <- scores |>
   group_by(.data$experiment_id) |>
@@ -73,6 +80,10 @@ ui <- page_navbar(
       .baseline-panel h3 { font-size: 1.05rem; margin: 0 0 4px 0; }
       .baseline-panel .small-muted { margin-bottom: 8px; }
       .baseline-empty { color: #58656d; margin: 12px 0 0 0; }
+      .gene-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 4px 0 12px 0; }
+      .gene-summary { border: 1px solid #d9e2e7; border-radius: 8px; padding: 9px 12px; background: #fbfcfd; }
+      .gene-summary .gene { font-weight: 700; }
+      .gene-summary .detail { color: #58656d; font-size: 0.9rem; line-height: 1.4; }
       @media (max-width: 800px) { .metric-strip { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
     "))
   ),
@@ -96,24 +107,65 @@ ui <- page_navbar(
           ),
           selectInput("gene_papers", "Papers", choices = sort(unique(scores$paper)), selected = sort(unique(scores$paper)), multiple = TRUE),
           selectInput("depmap_cell_lines", "DepMap cell lines", choices = sort(unique(stats::na.omit(depmap_crispr$cell_line))), selected = sort(unique(stats::na.omit(depmap_crispr$cell_line))), multiple = TRUE),
-          selectInput(
-            "effect_axis_type",
-            "Cross-paper axis",
-            choices = c(
-              "Signed −log₁₀(FDR / p-value)" = "signed_log10",
-              "Per-experiment z-score"                      = "zscore",
-              "Raw effect value (paper units)"              = "raw"
-            ),
-            selected = "signed_log10"
+          radioButtons(
+            "gene_view_mode",
+            "View",
+            choices = c("One row per screen" = "screens", "All results" = "all"),
+            selected = "screens"
           ),
-          checkboxInput("gene_significant_only", "Show significant/annotated hits only", FALSE),
+          conditionalPanel(
+            condition = "input.gene_view_mode == 'screens'",
+            checkboxGroupInput(
+              "screen_extra_groups",
+              "Also show",
+              choices = screen_extra_group_choices,
+              selected = character()
+            )
+          ),
+          conditionalPanel(
+            condition = "input.gene_view_mode == 'all'",
+            selectInput(
+              "effect_axis_type",
+              "Cross-paper axis",
+              choices = c(
+                "Signed −log₁₀(FDR / p-value)" = "signed_log10",
+                "Per-experiment z-score"                      = "zscore",
+                "Raw effect value (paper units)"              = "raw"
+              ),
+              selected = "signed_log10"
+            ),
+            checkboxInput("gene_significant_only", "Show significant/annotated hits only", FALSE)
+          ),
           downloadButton("download_gene_view", "Download view")
         )
       ),
       card(
         card_header("Cross-paper gene effects"),
-        plotlyOutput("gene_effect_plot", height = "1520px"),
-        uiOutput("gene_effect_na_note")
+        uiOutput("gene_screen_summary"),
+        conditionalPanel(
+          condition = "input.gene_view_mode == 'screens'",
+          uiOutput("gene_screen_plot_ui"),
+          tags$div(
+            class = "small-muted",
+            style = "display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 6px 0;",
+            tags$span(HTML("<span style='color:#2a6fb0'>&#9679;</span> FDR ≤ 0.05 or paper threshold")),
+            tags$span(HTML("<span style='color:#2a6fb0'>&#9675;</span> Not significant or no statistics")),
+            tags$span(HTML("<span style='color:#2a6fb0'>&#9670;</span> In published hit list")),
+            tags$span("Shaded: top or bottom 10% of the screen"),
+            tags$span("Blank: gene not measured")
+          ),
+          tags$p(
+            class = "small-muted",
+            "One representative result per independent screen: the latest timepoint, and for MAGeCK the selection arm matching the gene's direction. ",
+            "Percentiles rank the gene among all genes in that screen. Hit-list tables are not genome-wide, so listed genes are shown without a percentile. ",
+            "Switch to All results for every timepoint, arm, and derived table."
+          )
+        ),
+        conditionalPanel(
+          condition = "input.gene_view_mode == 'all'",
+          plotlyOutput("gene_effect_plot", height = "1520px"),
+          uiOutput("gene_effect_na_note")
+        )
       ),
       card(
         card_header("Evidence table"),
@@ -366,6 +418,8 @@ ui <- page_navbar(
     card(
       card_header("Changelog"),
         tags$dl(
+        tags$dt("2026-11-03 — Gene Explorer screen summary view"),
+        tags$dd("The Gene Explorer now opens on one row per independent screen, grouped by venetoclax context, with one panel per gene on a shared within-screen percentile axis and a per-gene summary of top/bottom-10% screens. Other BH3 mimetics and ORF, priming, and expression assays can be added with toggles; the previous all-results plot remains available under View."),
         tags$dt("2026-11-03 — Effect sign, normalization, and rank fixes (v0.1.1)"),
         tags$dd(
           tags$ul(
@@ -638,6 +692,58 @@ server <- function(input, output, session) {
     } else {
       zhang_library
     }
+  })
+
+  gene_screen_view <- reactive({
+    req(length(selected_gene_keys()) > 0)
+    groups <- c(venetoclax_screen_groups, input$screen_extra_groups)
+    screen_scores |>
+      filter(
+        .data$gene_key %in% selected_gene_keys(),
+        .data$paper %in% input$gene_papers,
+        .data$screen_group %in% groups
+      )
+  })
+
+  output$gene_screen_summary <- renderUI({
+    req(length(selected_gene_keys()) > 0)
+    support <- summarise_screen_support(screen_scores, selected_gene_keys(), papers = input$gene_papers)
+    symbols <- gene_screen_view() |>
+      group_by(.data$gene_key) |>
+      summarise(gene_display = format_gene_symbols(.data$gene_symbol), .groups = "drop")
+    support <- support |>
+      left_join(symbols, by = "gene_key") |>
+      mutate(gene_display = dplyr::coalesce(.data$gene_display, .data$gene_symbol))
+    chips <- lapply(seq_len(nrow(support)), function(i) {
+      row <- support[i, ]
+      detail <- if (row$n_tested == 0) {
+        "Not measured in the selected venetoclax screens."
+      } else if (row$n_resistance == 0 && row$n_sensitizing == 0) {
+        paste0("No top- or bottom-10% signal in ", row$n_tested, " venetoclax screens.")
+      } else {
+        parts <- c(
+          if (row$n_resistance > 0) paste0("Resistance (top 10%) in ", row$n_resistance, " of ", row$n_tested, " venetoclax screens; FDR ≤ 0.05 in ", row$n_resistance_fdr, "."),
+          if (row$n_sensitizing > 0) paste0("Sensitizing (bottom 10%) in ", row$n_sensitizing, " of ", row$n_tested, " venetoclax screens; FDR ≤ 0.05 in ", row$n_sensitizing_fdr, ".")
+        )
+        paste(parts, collapse = " ")
+      }
+      tags$div(class = "gene-summary", tags$div(class = "gene", row$gene_display), tags$div(class = "detail", detail))
+    })
+    tags$div(class = "gene-summary-grid", chips)
+  })
+
+  output$gene_screen_plot_ui <- renderUI({
+    df <- gene_screen_view()
+    if (!nrow(df)) {
+      return(tags$p(class = "baseline-empty", "The selected genes were not measured in the selected screens."))
+    }
+    plotlyOutput("gene_screen_plot", height = paste0(screen_panel_height(df), "px"))
+  })
+
+  output$gene_screen_plot <- renderPlotly({
+    df <- gene_screen_view()
+    validate(need(nrow(df) > 0, "Search for one or more genes to populate this view."))
+    plot_screen_panels(df, gene_order = selected_gene_keys())
   })
 
   output$gene_effect_plot <- renderPlotly({

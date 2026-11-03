@@ -75,7 +75,20 @@ shiny::testServer(app_env$server, {
   stopifnot(nrow(gene_view()) > 0L, all(gene_view()$gene_key %in% c("BAX", "TP53")))
   stopifnot(nrow(gene_effect_display()) > 0L, nrow(depmap_view()) > 0L)
   stopifnot(nrow(overview_hits()) > 0L, nrow(expression_auc_view()) > 0L)
+  session$setInputs(gene_view_mode = "screens", screen_extra_groups = character())
+  stopifnot(nrow(gene_screen_view()) > 0L, all(gene_screen_view()$screen_group %in% venetoclax_screen_groups))
+  stopifnot(!anyDuplicated(gene_screen_view()[c("screen_id", "gene_key")]))
+  session$setInputs(screen_extra_groups = "Other BH3 mimetics")
+  stopifnot("Other BH3 mimetics" %in% gene_screen_view()$screen_group)
 })
+# Every screen-view registry row must match a displayed experiment, and the
+# canonical resistance genes must lead the venetoclax screens they appear in.
+stopifnot(nrow(dplyr::anti_join(screen_view_registry, dplyr::distinct(scores, paper, experiment), by = c("paper", "experiment"))) == 0L)
+screen_support <- summarise_screen_support(app_env$screen_scores, c("BAX", "PMAIP1"))
+stopifnot(all(screen_support$n_resistance >= 8L), all(screen_support$n_sensitizing == 0L))
+mcl1_support <- summarise_screen_support(app_env$screen_scores, "BCL2L1")
+stopifnot(mcl1_support$n_sensitizing >= 3L, mcl1_support$n_resistance == 0L)
+
 lock <- jsonlite::read_json("renv.lock", simplifyVector = FALSE)
 missing <- names(lock$Packages)[!vapply(names(lock$Packages), requireNamespace, logical(1), quietly = TRUE)]
 stopifnot(length(missing) == 0L)
