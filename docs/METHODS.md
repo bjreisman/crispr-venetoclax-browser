@@ -20,6 +20,19 @@ The core cache contains ten studies. It combines survival-selection knockout scr
 
 These limitations affect interpretation and target prioritization. They do not prevent sharing the software as a work in progress. The next scientific milestones are in [PUBLICATION_PLAN.md](PUBLICATION_PLAN.md).
 
+## Gene Explorer screen summary
+
+The default Gene Explorer view shows one representative result per independent screen. `R/screen_views.R` defines the representative experiments, using the parent screens in `data/metadata/experiment_to_screen_mapping.csv`:
+
+- Repeat timepoints use the latest timepoint. Guièze2019 STARS uses replicate 1.
+- MAGeCK screens list both selection arms. Each gene takes the arm that matches its LFC sign, so the displayed FDR is the directional one.
+- Derived aggregates, hit subsets, and Lin2019 essentiality scores are excluded.
+- Screens are grouped as venetoclax in AML, venetoclax in lymphoid models, and venetoclax combinations (shown by default), plus other BH3 mimetics and ORF, priming, and expression assays (optional).
+
+The axis is a signed within-screen percentile, from −1 (most depleted) to +1 (most enriched), computed among all genes in that screen. Lin2019 percentiles are relative to its metabolic library. Guièze2019 STARS and Portelinha2024 tables list only selected genes, so listed genes are shown without a percentile.
+
+The per-gene summary counts venetoclax screens in which the gene falls in the top or bottom 10%, and how many of those also have FDR ≤ 0.05. Hit-list screens count as tested for every gene: a listed gene with FDR ≤ 0.05 counts as resistance, and an unlisted gene counts as no signal. This is a descriptive summary, not a meta-analysis. Percentiles are not comparable between ORF, BH3-priming, or expression assays and knockout survival screens.
+
 ## Study-specific processing
 
 Guièze2019 includes STARS knockout results and ORF overexpression. The ORF browser uses the strongest venetoclax-enriched construct per gene; it is a different perturbation from knockout.

@@ -433,3 +433,84 @@ plot_external_crispr_rank <- function(df, top_n = 20) {
   ggplotly(p, tooltip = "text") |>
     layout(legend = list(orientation = "h", y = -0.18))
 }
+
+screen_hit_list_x <- 1.35
+
+screen_panel_levels <- function(df) {
+  groups <- screen_view_groups[screen_view_groups %in% as.character(df$screen_group)]
+  unlist(lapply(groups, function(group) {
+    labels <- unique(screen_view_registry$short_label[screen_view_registry$screen_group == group])
+    c(paste0("<b>", group, "</b>"), labels[labels %in% df$short_label])
+  }))
+}
+
+screen_panel_height <- function(df) {
+  n_genes <- dplyr::n_distinct(df$gene_key)
+  n_rows <- length(screen_panel_levels(df))
+  panel_rows <- ceiling(n_genes / 4)
+  max(360, 110 + panel_rows * (22 * n_rows + 40))
+}
+
+plot_screen_panels <- function(df, gene_order = unique(df$gene_key)) {
+  if (!nrow(df)) return(plotly_empty(type = "scatter", mode = "markers"))
+
+  y_levels <- screen_panel_levels(df)
+  plot_df <- df |>
+    group_by(.data$gene_key) |>
+    mutate(gene_display = format_gene_symbols(.data$gene_symbol)) |>
+    ungroup() |>
+    mutate(
+      x = dplyr::if_else(.data$hit_list_only, screen_hit_list_x, .data$percentile),
+      marker = dplyr::case_when(
+        .data$hit_list_only ~ "In published hit list",
+        .data$supported ~ "FDR ≤ 0.05 or paper threshold",
+        TRUE ~ "Not significant or no statistics"
+      ),
+      y = factor(.data$short_label, levels = rev(y_levels)),
+      label = paste0(
+        .data$gene_display, " · ", .data$short_label,
+        "<br>", .data$paper, " — ", .data$experiment,
+        dplyr::if_else(
+          .data$hit_list_only,
+          "<br>Listed in a published hit table (not genome-wide; no percentile)",
+          paste0("<br>Within-screen percentile: ", sprintf("%+.2f", .data$percentile), " of ", format(.data$screen_genes, big.mark = ","), " genes")
+        ),
+        "<br>", .data$effect_metric, ": ", signif(.data$effect_value, 3),
+        "<br>FDR: ", dplyr::if_else(is.na(.data$fdr), "not reported", as.character(signif(.data$fdr, 3))),
+        "<br>", .data$significance
+      )
+    )
+  plot_df$gene_display <- factor(plot_df$gene_display, levels = unique(plot_df$gene_display[order(match(plot_df$gene_key, gene_order))]))
+
+  marker_shapes <- c(
+    "FDR ≤ 0.05 or paper threshold" = 16,
+    "Not significant or no statistics" = 1,
+    "In published hit list" = 18
+  )
+
+  p <- ggplot(plot_df, aes(x = x, y = y, shape = marker, text = label)) +
+    annotate("rect", xmin = screen_signal_cutoff, xmax = 1.03, ymin = 0.5, ymax = length(y_levels) + 0.5, fill = "#b73e3e", alpha = 0.1) +
+    annotate("rect", xmin = -1.03, xmax = -screen_signal_cutoff, ymin = 0.5, ymax = length(y_levels) + 0.5, fill = "#247a6b", alpha = 0.1) +
+    geom_vline(xintercept = 0, color = "#b9b9b9", linewidth = 0.35) +
+    geom_point(size = 3, color = "#2a6fb0", stroke = 1) +
+    scale_shape_manual(values = marker_shapes, name = NULL, drop = FALSE) +
+    scale_y_discrete(limits = rev(y_levels), drop = FALSE) +
+    scale_x_continuous(
+      limits = c(-1.08, screen_hit_list_x + 0.12),
+      breaks = c(-1, 0, 1, screen_hit_list_x),
+      labels = c("−1", "0", "+1", "hit list")
+    ) +
+    facet_wrap(~gene_display, ncol = min(4, dplyr::n_distinct(plot_df$gene_key))) +
+    labs(x = "← sensitizing    within-screen percentile    resistance →", y = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major.y = element_line(color = "#f0f0ee", linewidth = 0.3),
+      strip.text = element_text(face = "bold", size = 12),
+      legend.position = "bottom",
+      axis.text.y = element_text(size = 10.5)
+    )
+
+  ggplotly(p, tooltip = "text") |>
+    layout(showlegend = FALSE, margin = list(t = 50, b = 60))
+}

@@ -19,6 +19,7 @@ app_files <- c(
   "README.md",
   "R/load_data.R",
   "R/plots.R",
+  "R/screen_views.R",
   "R/tidy_external_context.R",
   "R/tidy_sources.R",
   "data/processed/gene_scores.rds",
