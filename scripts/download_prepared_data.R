@@ -2,7 +2,7 @@
 # Run from the repository root after installing/restoring the R dependencies.
 download_prepared_data <- function(overwrite = FALSE) {
   manifest <- readr::read_csv("data/metadata/cache_manifest.csv", show_col_types = FALSE)
-  base_url <- "https://github.com/bjreisman/crispr-venetoclax-browser/releases/download/v0.1.0"
+  base_url <- "https://github.com/bjreisman/crispr-venetoclax-browser/releases/download/v0.1.1"
   expected <- file.path("data/processed", c(
     "gene_scores.rds", "depmap_crispr.rds", "external_context.rds", "additional_screen_candidates.rds"
   ))

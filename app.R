@@ -296,7 +296,7 @@ ui <- page_navbar(
       ),
       card(
         card_header("Eide2023 GEO CRISPR count summary"),
-        tags$p(class = "baseline-note", "Gene-level summaries computed from public sgRNA counts as median sgRNA log2 fold-change versus DMSO. No p-value or FDR is inferred here."),
+        tags$p(class = "baseline-note", "Gene-level summaries computed from depth-normalized public sgRNA counts as median sgRNA log2 fold-change versus DMSO, centered on the experiment median. No p-value or FDR is inferred here."),
         plotlyOutput("context_crispr_plot", height = "960px"),
         DTOutput("context_crispr_table")
       ),
@@ -315,8 +315,8 @@ ui <- page_navbar(
       tags$ul(
         tags$li("Recurrence reflects gene presence across selected datasets, rather than significant, directionally consistent replication across independent studies."),
         tags$li("The significant/annotated flag includes nominal p-values even when a reported FDR exceeds 0.05. Missing FDR values can pass the FDR filter."),
-        tags$li("Knockout, ORF overexpression, expression, baseline dependency, and BH3-priming results have different interpretations. Some MAGeCK effects use selection-arm-imposed signs; a centered z-score need not retain biological direction."),
-        tags$li("Eide count summaries have not undergone a replicate-aware normalized reanalysis. Patient correlations can include repeated specimens or measurements. Symbol matching is not formal human-mouse orthology mapping.")
+        tags$li("Knockout, ORF overexpression, expression, baseline dependency, and BH3-priming results have different interpretations. A centered z-score need not retain biological direction."),
+        tags$li("Eide count summaries are depth-normalized and median-centered but have not undergone a replicate-aware reanalysis. Patient correlations can include repeated specimens or measurements. Symbol matching is not formal human-mouse orthology mapping.")
       )
     ),
     card(
@@ -338,7 +338,7 @@ ui <- page_navbar(
         tags$li("DepMap 26Q1 direct matches are available for MOLM-13, THP-1, and OCI-LY19. OCI-Ly1 was not found in the 26Q1 model metadata."),
         tags$li("BeatAML2 and Eide2023 ex vivo drug-response data are contextual patient/sample sensitivity measurements; lower AUC means greater sensitivity and these are not knockout effect sizes."),
         tags$li("BeatAML2 curated gene-set scores are contextual RNA-seq signatures computed as the mean of per-gene z-scored expression across member genes present in the public BeatAML2 expression matrix."),
-        tags$li("Eide2023 CRISPR rows are computed from public GEO sgRNA count tables as median sgRNA log2 fold-change versus DMSO; no p-value or FDR is inferred from those counts in this browser."),
+        tags$li("Eide2023 CRISPR rows are computed from public GEO sgRNA count tables: counts are scaled to the median library size, sgRNA log2 fold-changes versus DMSO are summarized as the gene median, and gene effects are centered on the experiment median (the library has no non-targeting guides); no p-value or FDR is inferred from those counts in this browser."),
         tags$li("He2026 includes the Figure 1 source-data combined MAGeCK gene table with p-values, plus separate P1-R and P2-R sgRNA RPM-derived LFC summaries without p-values/FDRs. LFC is represented as CytoC-high/CytoC-low, so negative values indicate CytoC-low enrichment/sensitizing knockout candidates such as ADSS2."),
         tags$li("Nakao2023 uses a reproducible DrugZ re-analysis of author-supplied sgRNA counts for March5-WT venetoclax, March5-WT S63845, and March5-KO venetoclax screens. Displayed effect is DrugZ normalized Z for drug vs DMSO; positive values indicate resistance/enrichment and negative values sensitization/depletion. Direction-aware DrugZ p-values/FDRs are displayed, while MAGeCK MLE beta statistics remain audit fields in downloads. Non-targeting-control and miRNA pseudo-genes are excluded from browser rows."),
         tags$li("Zhang2024 is included as CRISPR library coverage context because the public XLSX contains guide design rather than a scored genome-screen hit table."),
@@ -366,6 +366,14 @@ ui <- page_navbar(
     card(
       card_header("Changelog"),
         tags$dl(
+        tags$dt("2026-11-03 — Effect sign, normalization, and rank fixes (v0.1.1)"),
+        tags$dd(
+          tags$ul(
+            tags$li("MAGeCK negative-selection arms (Nechiporuk2019, Glytsou2023) now keep the signed gene LFC, and positive-selection arms no longer force it positive. Previously enriched resistance genes such as BAX and TP53 appeared as depleted in negative-selection arms."),
+            tags$li("Eide2023 count-derived fold-changes are now normalized to the median library size and centered on the median gene, removing a −1.3 to −3.2 log₂ depth offset."),
+            tags$li("Portelinha2024 ranks are now computed across genes; previously every gene had rank 1.")
+          )
+        ),
         tags$dt("2026-08-25 — Nakao2023 MARCH5 CRISPR screens"),
         tags$dd("Added three mouse mMA9Cas drug-vs-DMSO screen re-analyses from published sgRNA counts. DrugZ normalized Z and directional FDR drive browser rows; MAGeCK MLE results are retained for provenance and paper-figure concordance."),
         tags$dt("2026-07-03 — He2026 BH3-priming CRISPR screen"),

@@ -29,8 +29,8 @@ Published: [repository](https://github.com/bjreisman/crispr-venetoclax-browser) 
 
 1. Define assay/treatment eligibility and study-level directional support using the existing screen/experiment registries. Count independent studies and models separately from tests, timepoints, and aggregates.
 2. Separate adjusted significance, nominal evidence, source thresholds, missing statistics, and measured unsupported results. Make missing-FDR filtering explicit.
-3. Preserve source effect signs and document verified contrast orientations. Make heatmaps and recurrence tables use one evidence definition, with source-native effect units in detail views.
-4. Reanalyze Eide counts with documented depth normalization, replicate-aware scoring, and guide/control QC.
+3. Document verified contrast orientations (MAGeCK selection-arm signs are preserved as of v0.1.1). Make heatmaps and recurrence tables use one evidence definition, with source-native effect units in detail views.
+4. Reanalyze Eide counts with replicate-aware scoring and guide/control QC (depth normalization and median centering were added in v0.1.1).
 5. Add species-aware gene identity and versioned orthology; keep source symbols and ambiguous mappings visible.
 6. Handle repeated specimens/subjects in patient associations, and ensure empty selections and exports have explicit behavior.
 

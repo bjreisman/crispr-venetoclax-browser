@@ -18,3 +18,12 @@ A pre-existing ggplot warning about a dropped `text` aesthetic appears during se
 The public repository and release v0.1.0 were verified on 1 November 2026. All four release assets were downloaded by `scripts/download_prepared_data.R` into a fresh clone from GitHub and passed the recorded SHA-256 and size checks. The release check script passed using the installed packages matching the lockfile. The freshly cloned app started independently on localhost port 3844 and returned HTTP 200. No `.rds` files are tracked in Git; the data are release assets.
 
 The downloader was also checked to skip already verified local files and to preserve an existing mismatched cache while reporting an actionable error. These checks do not establish a clean dependency installation on another operating system.
+
+## v0.1.1 rebuild (3 November 2026)
+
+The `gene_scores.rds` and `external_context.rds` caches were rebuilt from the local source inputs after fixing MAGeCK selection-arm signs, Eide2023 depth normalization, and Portelinha2024 ranks. `depmap_crispr.rds` and `additional_screen_candidates.rds` are unchanged from v0.1.0.
+
+- Row count (439,550), studies (10), and displayed experiments (37) are unchanged.
+- Compared with v0.1.0, only the intended fields changed: effect values and directions in Glytsou2023 and Nechiporuk2019 MAGeCK arms, Eide2023 effect values, ranks, and directions, and Portelinha2024 ranks. All other studies, and all external-context tables except the Eide2023 CRISPR summary, are identical.
+- `scripts/smoke_test.R` adds three checks: BAX is enriched in every MAGeCK selection arm and Eide2023 venetoclax experiment, Eide2023 experiment medians are within 0.1 of zero, and no experiment has a constant rank. All three fail on the v0.1.0 cache and pass on the rebuilt cache. The full smoke test passed.
+- `Rscript --vanilla scripts/check_release.R` passed with the updated cache manifest.
