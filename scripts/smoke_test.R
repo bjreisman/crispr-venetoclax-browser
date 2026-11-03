@@ -122,14 +122,48 @@ if (nrow(lin_threshold_hits) != 241) {
   stop("Lin2019 paper-threshold average drug-sensitivity hit count should match the reported 241 genes.")
 }
 
-arm_sign_mismatches <- scores |>
+direction_sign_mismatches <- scores |>
   dplyr::filter(
     (.data$direction == "resistance/enriched" & .data$effect_value < 0) |
       (.data$direction == "sensitization/depleted" & .data$effect_value > 0)
   )
 
-if (nrow(arm_sign_mismatches)) {
-  stop("Selection-arm effects are not direction-normalized.")
+if (nrow(direction_sign_mismatches)) {
+  stop("Direction labels disagree with effect signs in ", nrow(direction_sign_mismatches), " rows.")
+}
+
+# BAX loss confers venetoclax resistance; it must be enriched in both MAGeCK
+# selection arms and in the Eide2023 count-derived screens.
+bax_not_enriched <- scores |>
+  dplyr::filter(
+    .data$gene_key == "BAX",
+    grepl("^MAGeCK (positive|negative) selection LFC$", .data$effect_metric) | .data$paper == "Eide2023",
+    grepl("V|venetoclax", .data$experiment),
+    !(.data$effect_value > 0)
+  )
+
+if (nrow(bax_not_enriched)) {
+  stop("BAX is not enriched in: ", paste(unique(bax_not_enriched$experiment_id), collapse = "; "))
+}
+
+eide_offsets <- scores |>
+  dplyr::filter(.data$paper == "Eide2023") |>
+  dplyr::group_by(.data$experiment_id) |>
+  dplyr::summarise(median_effect = stats::median(.data$effect_value, na.rm = TRUE), .groups = "drop") |>
+  dplyr::filter(abs(.data$median_effect) > 0.1)
+
+if (nrow(eide_offsets)) {
+  stop("Eide2023 fold-changes are not centered: ", paste(eide_offsets$experiment_id, collapse = "; "))
+}
+
+constant_ranks <- scores |>
+  dplyr::filter(!is.na(.data$rank)) |>
+  dplyr::group_by(.data$experiment_id) |>
+  dplyr::summarise(n = dplyr::n(), n_ranks = dplyr::n_distinct(.data$rank), .groups = "drop") |>
+  dplyr::filter(.data$n > 1, .data$n_ranks == 1)
+
+if (nrow(constant_ranks)) {
+  stop("Experiments with a constant rank: ", paste(constant_ranks$experiment_id, collapse = "; "))
 }
 
 if (!nrow(depmap_crispr)) {

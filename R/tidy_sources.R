@@ -173,6 +173,8 @@ tidy_mageck_gene_sheet <- function(source_file, sheet, skip, paper, experiment) 
     rename(gene_symbol = id) |>
     mutate(across(everything(), as.character))
 
+  # MAGeCK reports one gene-level LFC shared by both arms; keep its sign so
+  # enriched genes are not shown as depleted in the negative-selection arm.
   neg <- if ("neg|lfc" %in% names(base)) {
     base |>
       mutate(mageck_raw_score = coerce_number(`neg|lfc`)) |>
@@ -180,11 +182,11 @@ tidy_mageck_gene_sheet <- function(source_file, sheet, skip, paper, experiment) 
         gene_symbol,
         experiment = paste0(experiment, " | negative selection"),
         effect_metric = "MAGeCK negative selection LFC",
-        effect_value = -abs(.data$mageck_raw_score),
+        effect_value = .data$mageck_raw_score,
         p_value = coerce_number(`neg|p-value`),
         fdr = coerce_number(`neg|fdr`),
         rank = coerce_number(`neg|rank`),
-        direction = "sensitization/depleted",
+        direction = classify_direction(.data$mageck_raw_score),
         source_level = "gene",
         source_file = source_file,
         raw_effect_value = .data$mageck_raw_score
@@ -200,11 +202,11 @@ tidy_mageck_gene_sheet <- function(source_file, sheet, skip, paper, experiment) 
         gene_symbol,
         experiment = paste0(experiment, " | positive selection"),
         effect_metric = "MAGeCK positive selection LFC",
-        effect_value = abs(.data$mageck_raw_score),
+        effect_value = .data$mageck_raw_score,
         p_value = coerce_number(`pos|p-value`),
         fdr = coerce_number(`pos|fdr`),
         rank = coerce_number(`pos|rank`),
-        direction = "resistance/enriched",
+        direction = classify_direction(.data$mageck_raw_score),
         source_level = "gene",
         source_file = source_file,
         raw_effect_value = .data$mageck_raw_score
@@ -309,7 +311,6 @@ tidy_portelinha_file <- function(root, file_name, experiment) {
       raw_effect_value = mean(coerce_number(edger_sgrna_level_lfc), na.rm = TRUE),
       p_value = NA_real_,
       fdr = min(coerce_number(edger_gene_level_fdr), na.rm = TRUE),
-      rank = min(rank(-abs(coerce_number(edger_sgrna_level_lfc)), ties.method = "first"), na.rm = TRUE),
       n_sgrna = n(),
       .groups = "drop"
     ) |>
@@ -317,7 +318,7 @@ tidy_portelinha_file <- function(root, file_name, experiment) {
       raw_effect_value = if_else(is.infinite(.data$raw_effect_value), NA_real_, .data$raw_effect_value),
       effect_value = abs(.data$raw_effect_value),
       fdr = if_else(is.infinite(.data$fdr), NA_real_, .data$fdr),
-      rank = if_else(is.infinite(.data$rank), NA_real_, .data$rank),
+      rank = rank(-.data$effect_value, ties.method = "first", na.last = "keep"),
       experiment = experiment,
       effect_metric = "edgeR sgRNA mean logFC",
       direction = "resistance/enriched",
@@ -361,6 +362,12 @@ tidy_eide2023_crispr <- function(root = ".") {
   if (!file.exists(source_file)) return(tibble())
 
   raw <- readr::read_tsv(source_file, show_col_types = FALSE)
+  # Scale each sample to the median library size before computing fold-changes;
+  # raw-count ratios otherwise carry a sequencing-depth offset.
+  count_cols <- setdiff(names(raw), c("sgRNA", "Gene"))
+  library_sizes <- colSums(raw[count_cols], na.rm = TRUE)
+  size_factors <- library_sizes / stats::median(library_sizes)
+  raw[count_cols] <- purrr::map2(raw[count_cols], size_factors, `/`)
   condition_specs <- tibble::tribble(
     ~experiment, ~control_pattern, ~treatment_pattern,
     "OCI-AML2 Yusa library day 14 venetoclax vs DMSO", "D14_DMSO", "D14_VEN[0-9]",
@@ -387,8 +394,10 @@ tidy_eide2023_crispr <- function(root = ".") {
         .groups = "drop"
       ) |>
       mutate(
+        # No non-targeting guides in this library; center on the median gene.
+        effect_value = .data$effect_value - stats::median(.data$effect_value, na.rm = TRUE),
         experiment = experiment,
-        effect_metric = "Median sgRNA log2 fold-change from GEO counts",
+        effect_metric = "Median-centered sgRNA log2 fold-change from normalized GEO counts",
         p_value = NA_real_,
         fdr = NA_real_,
         rank = rank(-abs(.data$effect_value), ties.method = "first"),
