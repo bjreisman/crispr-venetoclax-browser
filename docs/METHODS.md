@@ -31,6 +31,8 @@ The default Gene Explorer view shows one representative result per independent s
 
 The axis is a signed within-screen percentile, from −1 (most depleted) to +1 (most enriched), computed among all genes in that screen. Lin2019 percentiles are relative to its metabolic library. Guièze2019 STARS, Portelinha2024, and the Deng2022 and Diepstraten2026 CRISPRa tables list only selected genes, so listed genes are shown without a percentile.
 
+Screens with more than one result (repeat timepoints, replicates, doses, or derived tables such as Lin2019's average and Nechiporuk2019's top-hits table) are marked ▸. Clicking one of the paper's dots, or choosing it under Expand papers, shows each result as an indented row, scored within its own experiment. Results are grouped by their parent screen in `data/metadata/experiment_to_screen_mapping.csv`; MAGeCK selection arms of one comparison form one row, and baseline essentiality scores are not shown. Expanded rows are for inspection only and do not enter the per-gene summary.
+
 The per-gene summary counts venetoclax screens in which the gene falls in the top or bottom 10%, and how many of those also have FDR ≤ 0.05. Hit-list screens count as tested for every gene: a listed gene with FDR ≤ 0.05 counts as resistance, and an unlisted gene counts as no signal. This is a descriptive summary, not a meta-analysis. Percentiles are not comparable between ORF or BH3-priming assays and knockout survival screens.
 
 ## Study-specific processing

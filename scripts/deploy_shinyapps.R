@@ -20,6 +20,7 @@ app_files <- c(
   "R/load_data.R",
   "R/plots.R",
   "R/screen_views.R",
+  "data/metadata/experiment_to_screen_mapping.csv",
   "R/tidy_external_context.R",
   "R/tidy_sources.R",
   "data/processed/gene_scores.rds",

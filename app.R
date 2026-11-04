@@ -23,7 +23,12 @@ beataml_gene_sets <- external_context$beataml_gene_sets
 eide_crispr_context <- external_context$eide_crispr
 zhang_library <- external_context$zhang_library
 
-screen_scores <- build_screen_scores(scores)
+screen_scores <- build_screen_scores(scores) |>
+  mutate(row_level = 0L, row_key = .data$screen_id)
+screen_detail_scores <- build_screen_scores(scores, build_screen_detail_registry(scores)) |>
+  mutate(row_level = 1L, row_key = .data$screen_id)
+expandable_papers <- sort(unique(screen_detail_scores$paper))
+screen_detail_parents <- unique(screen_detail_scores$parent_screen_id)
 screen_extra_group_choices <- c(
   "Other BH3 mimetics" = "Other BH3 mimetics",
   "CRISPRa, ORF, and BH3-priming assays" = "Other assays (direction not comparable)"
@@ -126,6 +131,14 @@ ui <- page_navbar(
               "Also show",
               choices = screen_extra_group_choices,
               selected = character()
+            ),
+            selectizeInput(
+              "screen_expand_papers",
+              "Expand papers",
+              choices = expandable_papers,
+              selected = character(),
+              multiple = TRUE,
+              options = list(placeholder = "Click a dot, or pick papers", plugins = list("remove_button"))
             )
           ),
           conditionalPanel(
@@ -165,7 +178,8 @@ ui <- page_navbar(
             class = "small-muted",
             "One representative result per independent screen: the latest timepoint, and for MAGeCK the selection arm matching the gene's direction. ",
             "Percentiles rank the gene among all genes in that screen. Hit-list tables are not genome-wide, so listed genes are shown without a percentile. ",
-            "Switch to All results for every timepoint, arm, and derived table."
+            "Papers marked ▸ have more results (timepoints, replicates, doses, derived tables): click one of their dots, or pick them under Expand papers, to show each result as an indented row. ",
+            "Switch to All results for every arm and table in paper-native units."
           )
         ),
         conditionalPanel(
@@ -431,6 +445,8 @@ ui <- page_navbar(
     card(
       card_header("Changelog"),
         tags$dl(
+        tags$dt("2026-11-03 — Expandable screens in the Gene Explorer"),
+        tags$dd("Screens with several results are marked ▸. Click one of a paper's dots, or pick it under Expand papers, to show each timepoint, replicate, dose, or derived table as an indented row; click again to collapse."),
         tags$dt("2026-11-03 — BrimEdwards2026 and Diepstraten2026"),
         tags$dd("Added the BrimEdwards2026 OCI-AML2 AZD4320 knockout screen (other BH3 mimetics) and the Diepstraten2026 Partita CRISPRa venetoclax hit lists. Updated data-availability notes for nine further candidates in the additional-screens catalog."),
         tags$dt("2026-11-03 — Stewart2026 unnormalized arms"),
@@ -718,12 +734,25 @@ server <- function(input, output, session) {
   gene_screen_view <- reactive({
     req(length(selected_gene_keys()) > 0)
     groups <- c(venetoclax_screen_groups, input$screen_extra_groups)
-    screen_scores |>
+    bind_rows(
+      screen_scores,
+      screen_detail_scores |> filter(.data$paper %in% input$screen_expand_papers)
+    ) |>
       filter(
         .data$gene_key %in% selected_gene_keys(),
         .data$paper %in% input$gene_papers,
         .data$screen_group %in% groups
       )
+  })
+
+  # Clicking a dot expands or collapses that paper's individual results.
+  observeEvent(event_data("plotly_click", source = "screen_panels"), {
+    paper <- event_data("plotly_click", source = "screen_panels")$customdata
+    if (is.null(paper) || !length(paper) || !paper[[1]] %in% expandable_papers) return()
+    paper <- paper[[1]]
+    current <- input$screen_expand_papers
+    expanded <- if (paper %in% current) setdiff(current, paper) else c(current, paper)
+    updateSelectizeInput(session, "screen_expand_papers", selected = expanded)
   })
 
   screen_metric <- reactive({
@@ -738,7 +767,7 @@ server <- function(input, output, session) {
   output$gene_screen_hidden_note <- renderUI({
     spec <- screen_metrics[[screen_metric()]]
     hidden <- gene_screen_view() |>
-      filter(is.na(.data[[spec$column]]), !(spec$hit_list_column & .data$hit_list_only)) |>
+      filter(.data$row_level == 0, is.na(.data[[spec$column]]), !(spec$hit_list_column & .data$hit_list_only)) |>
       distinct(.data$short_label) |>
       pull(.data$short_label)
     if (!length(hidden)) return(NULL)
@@ -781,13 +810,20 @@ server <- function(input, output, session) {
     if (!nrow(df)) {
       return(tags$p(class = "baseline-empty", "The selected genes were not measured in the selected screens."))
     }
-    plotlyOutput("gene_screen_plot", height = paste0(screen_panel_height(df), "px"))
+    plotlyOutput("gene_screen_plot", height = paste0(screen_panel_height(df, expandable_papers, input$screen_expand_papers, screen_detail_parents), "px"))
   })
 
   output$gene_screen_plot <- renderPlotly({
     df <- gene_screen_view()
     validate(need(nrow(df) > 0, "Search for one or more genes to populate this view."))
-    plot_screen_panels(df, gene_order = selected_gene_keys(), metric = screen_metric())
+    plot_screen_panels(
+      df,
+      gene_order = selected_gene_keys(),
+      metric = screen_metric(),
+      expandable_papers = expandable_papers,
+      expanded_papers = input$screen_expand_papers,
+      screen_detail_parents = screen_detail_parents
+    )
   })
 
   output$gene_effect_plot <- renderPlotly({
