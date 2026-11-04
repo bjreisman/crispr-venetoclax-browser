@@ -432,29 +432,53 @@ plot_external_crispr_rank <- function(df, top_n = 20) {
     layout(legend = list(orientation = "h", y = -0.18))
 }
 
-screen_panel_levels <- function(df) {
-  groups <- screen_view_groups[screen_view_groups %in% as.character(df$screen_group)]
-  unlist(lapply(groups, function(group) {
-    labels <- unique(screen_view_registry$short_label[screen_view_registry$screen_group == group])
-    c(paste0("<b>", group, "</b>"), labels[labels %in% df$short_label])
-  }))
+# Row layout for the screen view: a header per group, one row per screen, and
+# (for expanded papers) that screen's individual results underneath.
+# Returns keys (unique row ids) and display labels in top-to-bottom order.
+screen_panel_rows <- function(df, expandable_papers = character(), expanded_papers = character(),
+                              screen_detail_parents = character()) {
+  reps <- screen_view_registry |>
+    distinct(.data$screen_id, .data$paper, .data$screen_group, .data$short_label)
+  children <- df |>
+    filter(.data$row_level == 1) |>
+    distinct(.data$row_key, .data$parent_screen_id, .data$short_label, .data$detail_order)
+  shown <- union(df$row_key[df$row_level == 0], children$parent_screen_id)
+  groups <- screen_view_groups[screen_view_groups %in% reps$screen_group[reps$screen_id %in% shown]]
+  rows <- lapply(groups, function(group) {
+    screens <- reps |> filter(.data$screen_group == group, .data$screen_id %in% shown)
+    screen_rows <- lapply(seq_len(nrow(screens)), function(i) {
+      sc <- screens[i, ]
+      has_children <- sc$screen_id %in% screen_detail_parents
+      marker <- if (has_children && sc$paper %in% expanded_papers) "▾ " else if (has_children && sc$paper %in% expandable_papers) "▸ " else ""
+      kids <- children |> filter(.data$parent_screen_id == sc$screen_id) |> arrange(.data$detail_order)
+      tibble(
+        key = c(sc$screen_id, kids$row_key),
+        label = c(paste0(marker, sc$short_label), if (nrow(kids)) paste0("<span style='color:#6b7780'>", kids$short_label, "</span>"))
+      )
+    })
+    bind_rows(tibble(key = paste0("header :: ", group), label = paste0("<b>", group, "</b>")), screen_rows)
+  })
+  bind_rows(rows)
 }
 
-screen_panel_height <- function(df) {
+screen_panel_height <- function(df, ...) {
   n_genes <- dplyr::n_distinct(df$gene_key)
-  n_rows <- length(screen_panel_levels(df))
+  n_rows <- nrow(screen_panel_rows(df, ...))
   panel_rows <- ceiling(n_genes / 4)
   max(360, 110 + panel_rows * (22 * n_rows + 40))
 }
 
-plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "percentile") {
+plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "percentile",
+                               expandable_papers = character(), expanded_papers = character(),
+                               screen_detail_parents = character()) {
   spec <- screen_metrics[[metric]]
   df <- df |>
     mutate(value = .data[[spec$column]]) |>
     filter(!is.na(.data$value) | (spec$hit_list_column & .data$hit_list_only))
   if (!nrow(df)) return(plotly_empty(type = "scatter", mode = "markers"))
 
-  y_levels <- screen_panel_levels(df)
+  rows <- screen_panel_rows(df, expandable_papers, expanded_papers, screen_detail_parents)
+  y_levels <- rows$key
   finite_values <- df$value[is.finite(df$value)]
   value_range <- range(c(0, finite_values, if (is.finite(spec$band)) c(-spec$band, spec$band)))
   if (identical(metric, "percentile")) value_range <- c(-1, 1)
@@ -474,9 +498,13 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
         .data$supported ~ "FDR ≤ 0.05 or paper threshold",
         TRUE ~ "Not significant or no statistics"
       ),
-      y = factor(.data$short_label, levels = rev(y_levels)),
+      y = factor(.data$row_key, levels = rev(y_levels)),
       label = paste0(
         .data$gene_display, " · ", .data$short_label,
+        dplyr::if_else(.data$paper %in% expandable_papers,
+          dplyr::if_else(.data$paper %in% expanded_papers, "<br><i>Click to collapse this paper's results</i>", "<br><i>Click to show this paper's timepoints, replicates, and doses</i>"),
+          ""
+        ),
         "<br>", .data$paper, " — ", .data$experiment,
         dplyr::if_else(
           .data$hit_list_only,
@@ -520,7 +548,7 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
     break_labels <- c(break_labels, "hit list")
   }
 
-  p <- ggplot(plot_df, aes(x = x, y = y, shape = marker, text = label))
+  p <- ggplot(plot_df, aes(x = x, y = y, shape = marker, text = label, customdata = paper))
   if (is.finite(spec$band)) {
     p <- p +
       annotate("rect", xmin = spec$band, xmax = value_range[2] + 0.02 * span, ymin = 0.5, ymax = length(y_levels) + 0.5, fill = "#b73e3e", alpha = 0.1) +
@@ -528,9 +556,10 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
   }
   p <- p +
     geom_vline(xintercept = 0, color = "#b9b9b9", linewidth = 0.35) +
-    geom_point(size = 3, color = "#2a6fb0", stroke = 1) +
+    geom_point(data = dplyr::filter(plot_df, .data$row_level == 0), size = 3, color = "#2a6fb0", stroke = 1) +
+    geom_point(data = dplyr::filter(plot_df, .data$row_level == 1), size = 2.2, color = "#86a9cf", stroke = 0.8) +
     scale_shape_manual(values = marker_shapes, name = NULL, drop = FALSE) +
-    scale_y_discrete(limits = rev(y_levels), drop = FALSE) +
+    scale_y_discrete(limits = rev(y_levels), labels = stats::setNames(rows$label, rows$key), drop = FALSE) +
     scale_x_continuous(limits = x_limits, breaks = breaks, labels = break_labels) +
     facet_wrap(~gene_display, ncol = min(4, dplyr::n_distinct(plot_df$gene_key))) +
     labs(x = spec$axis, y = NULL) +
@@ -545,6 +574,7 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
       axis.text.y = element_text(size = 10.5)
     )
 
-  ggplotly(p, tooltip = "text") |>
-    layout(showlegend = FALSE, margin = list(t = 50, b = 60))
+  ggplotly(p, tooltip = "text", source = "screen_panels") |>
+    layout(showlegend = FALSE, margin = list(t = 50, b = 60)) |>
+    event_register("plotly_click")
 }

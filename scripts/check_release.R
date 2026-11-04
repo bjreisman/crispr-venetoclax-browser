@@ -84,6 +84,14 @@ shiny::testServer(app_env$server, {
     session$setInputs(screen_metric = metric)
     stopifnot(nzchar(output$gene_screen_plot))
   }
+  # Expanding a paper adds its timepoints/replicates as uniquely keyed rows.
+  collapsed_rows <- nrow(gene_screen_view())
+  session$setInputs(screen_metric = "percentile", screen_expand_papers = c("Sharon2019", "Chen2019", "Guièze2019"))
+  expanded <- gene_screen_view()
+  stopifnot(nrow(expanded) > collapsed_rows, any(expanded$row_level == 1L))
+  stopifnot(all(c("↳ day 8", "↳ day 29") %in% expanded$short_label[expanded$paper == "Sharon2019"]))
+  stopifnot(!anyDuplicated(screen_panel_rows(expanded, app_env$expandable_papers, input$screen_expand_papers, app_env$screen_detail_parents)$key))
+  stopifnot(nzchar(output$gene_screen_plot))
 })
 # Every screen-view registry row must match a displayed experiment, and the
 # canonical resistance genes must lead the venetoclax screens they appear in.

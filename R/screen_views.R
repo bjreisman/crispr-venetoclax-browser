@@ -113,12 +113,12 @@ screen_metrics <- list(
 
 screen_metric_choices <- stats::setNames(names(screen_metrics), vapply(screen_metrics, `[[`, character(1), "label"))
 
-build_screen_scores <- function(scores) {
+build_screen_scores <- function(scores, registry = screen_view_registry) {
   for (col in c("published_effect_value", "published_fdr")) {
     if (!col %in% names(scores)) scores[[col]] <- NA_real_
   }
   scores |>
-    inner_join(screen_view_registry, by = c("paper", "experiment")) |>
+    inner_join(registry, by = c("paper", "experiment")) |>
     filter(!is.na(.data$effect_value)) |>
     mutate(
       arm = dplyr::case_when(
@@ -169,7 +169,65 @@ build_screen_scores <- function(scores) {
       "screen_id", "screen_group", "short_label", "hit_list_only", "paper", "experiment",
       "experiment_id", "gene_key", "gene_symbol", "effect_metric", "effect_value",
       "p_value", "fdr", "significance", "supported", "percentile", "robust_z",
-      "published_effect", "published_fdr", "signed_log10_fdr", "screen_genes"
+      "published_effect", "published_fdr", "signed_log10_fdr", "screen_genes",
+      any_of(c("parent_screen_id", "detail_order"))
+    )
+}
+
+# Every result behind a representative screen row (timepoints, replicates,
+# doses, derived tables), for the expandable screen view. Results are grouped
+# by their parent screen in data/metadata/experiment_to_screen_mapping.csv;
+# MAGeCK arms of one comparison form one result. Screens with a single result,
+# baseline essentiality scores, and screens outside the registry are omitted.
+screen_mapping_file <- file.path("data", "metadata", "experiment_to_screen_mapping.csv")
+
+strip_selection_arm <- function(x) sub(" \\| (positive|negative) selection$", "", x)
+
+# Drop the words shared by every sibling label so rows read "day 8", "day 16".
+sibling_labels <- function(x) {
+  if (length(x) < 2) return(x)
+  words <- strsplit(x, " ", fixed = TRUE)
+  n <- 0
+  while (all(lengths(words) > n + 1) && length(unique(vapply(words, `[`, "", n + 1))) == 1) n <- n + 1
+  # Keep the last shared word when the rest starts with a number ("day 8").
+  if (n > 0 && any(grepl("^[0-9]", vapply(words, `[`, "", n + 1)))) n <- n - 1
+  out <- vapply(words, function(w) paste(w[(n + 1):length(w)], collapse = " "), "")
+  ifelse(nchar(out) > 48, paste0(substr(out, 1, 47), "…"), out)
+}
+
+build_screen_detail_registry <- function(scores, mapping_file = screen_mapping_file) {
+  empty <- screen_view_registry[0, ] |> mutate(parent_screen_id = character(), detail_order = integer())
+  if (!file.exists(mapping_file)) return(empty)
+  parents <- screen_view_registry |>
+    group_by(.data$screen_id) |>
+    summarise(screen_group = first(.data$screen_group), parent_hit_list = first(.data$hit_list_only), .groups = "drop")
+  readr::read_csv(mapping_file, show_col_types = FALSE) |>
+    semi_join(distinct(scores, .data$paper, .data$experiment), by = c("paper", "experiment")) |>
+    filter(!.data$role %in% "matched_baseline_context", !grepl("essentiality", .data$experiment, ignore.case = TRUE)) |>
+    transmute(
+      paper = .data$paper,
+      experiment = .data$experiment,
+      parent_screen_id = sub(";.*$", "", .data$parent_screen_ids),
+      experiment_base = strip_selection_arm(.data$experiment),
+      derived_subset = .data$role == "derived_hit_subset"
+    ) |>
+    inner_join(parents, by = c(parent_screen_id = "screen_id")) |>
+    group_by(.data$parent_screen_id) |>
+    filter(n_distinct(.data$experiment_base) > 1) |>
+    mutate(
+      base_order = match(.data$experiment_base, stringr::str_sort(unique(.data$experiment_base), numeric = TRUE)),
+      short_label = sibling_labels(stringr::str_sort(unique(.data$experiment_base), numeric = TRUE))[.data$base_order]
+    ) |>
+    ungroup() |>
+    transmute(
+      screen_id = paste(.data$parent_screen_id, .data$experiment_base, sep = " :: "),
+      paper = .data$paper,
+      experiment = .data$experiment,
+      screen_group = .data$screen_group,
+      short_label = paste0("↳ ", .data$short_label),
+      hit_list_only = .data$parent_hit_list | .data$derived_subset,
+      parent_screen_id = .data$parent_screen_id,
+      detail_order = .data$base_order
     )
 }
 
