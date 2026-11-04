@@ -46,6 +46,7 @@ screen_view_registry <- tibble::tribble(
   "yokoyama_ed_abbv467", "Yokoyama2026", "ED40515(-) ABBV-467 vs DMSO | positive selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL ED40515(−) ABBV-467 (MCL1i)", FALSE,
   "yokoyama_ed_abbv467", "Yokoyama2026", "ED40515(-) ABBV-467 vs DMSO | negative selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL ED40515(−) ABBV-467 (MCL1i)", FALSE,
   "yokoyama_del_abbv467", "Yokoyama2026", "DEL ABBV-467 vs DMSO | positive selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL DEL ABBV-467 (MCL1i)", FALSE,
+  "brimedwards_azd4320", "BrimEdwards2026", "OCI-AML2 Yusa library day 14 AZD4320 30 nM vs DMSO", "Other BH3 mimetics", "Brim-Edwards 2026 · OCI-AML2 AZD4320 (BCL2/BCL-XLi)", FALSE,
   "yokoyama_del_abbv467", "Yokoyama2026", "DEL ABBV-467 vs DMSO | negative selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL DEL ABBV-467 (MCL1i)", FALSE,
   "eide_ven_rux", "Eide2023", "OCI-AML2 Yusa library day 21 venetoclax+ruxolitinib vs DMSO", "Venetoclax combinations", "Eide 2023 · OCI-AML2 VEN + ruxolitinib", FALSE,
   "glytsou_ven_aza", "Glytsou2023", "V+A | positive selection", "Venetoclax combinations", "Glytsou 2023 · MOLM-13 VEN + azacitidine", FALSE,
@@ -58,6 +59,10 @@ screen_view_registry <- tibble::tribble(
   "portelinha_s63845", "Portelinha2024", "Positive selection screen table 2", "Other BH3 mimetics", "Portelinha 2024 · OCI-LY19 S63845 (hit list)", TRUE,
   "deng_crispra_214", "Deng2022", "CRISPRa line #214 venetoclax IC80 (30 nM) vs DMSO | enriched sgRNAs", "Other assays (direction not comparable)", "Deng 2022 · mouse lymphoma #214 CRISPRa (hit list)", TRUE,
   "deng_crispra_216", "Deng2022", "CRISPRa line #216 venetoclax IC80 (15 nM) vs DMSO | enriched sgRNAs", "Other assays (direction not comparable)", "Deng 2022 · mouse lymphoma #216 CRISPRa (hit list)", TRUE,
+  "diepstraten_crispra_214", "Diepstraten2026", "CRISPRa Partita DHL214 venetoclax IC50 (10 nM) vs DMSO | sgRNAs >=5% frequency (hit list)", "Other assays (direction not comparable)", "Diepstraten 2026 · mouse lymphoma DHL214 Partita CRISPRa (hit list)", TRUE,
+  "diepstraten_crispra_214", "Diepstraten2026", "CRISPRa Partita DHL214 venetoclax IC80 (30 nM) vs DMSO | sgRNAs >=5% frequency (hit list)", "Other assays (direction not comparable)", "Diepstraten 2026 · mouse lymphoma DHL214 Partita CRISPRa (hit list)", TRUE,
+  "diepstraten_crispra_216", "Diepstraten2026", "CRISPRa Partita DHL216 venetoclax IC50 (5 nM) vs DMSO | sgRNAs >=5% frequency (hit list)", "Other assays (direction not comparable)", "Diepstraten 2026 · mouse lymphoma DHL216 Partita CRISPRa (hit list)", TRUE,
+  "diepstraten_crispra_216", "Diepstraten2026", "CRISPRa Partita DHL216 venetoclax IC80 (15 nM) vs DMSO | sgRNAs >=5% frequency (hit list)", "Other assays (direction not comparable)", "Diepstraten 2026 · mouse lymphoma DHL216 Partita CRISPRa (hit list)", TRUE,
   "guieze_orf_ven", "Guièze2019", "ORF overexpression screen | venetoclax 100 nM day 10", "Other assays (direction not comparable)", "Guièze 2019 · ORF overexpression", FALSE,
   "he_p1r", "He2026", "P1-R BH3 priming screen CytoC-high vs CytoC-low", "Other assays (direction not comparable)", "He 2026 · AML PDX P1-R BH3 priming", FALSE,
   "he_p2r", "He2026", "P2-R BH3 priming screen CytoC-high vs CytoC-low", "Other assays (direction not comparable)", "He 2026 · AML PDX P2-R BH3 priming", FALSE
