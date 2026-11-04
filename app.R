@@ -445,57 +445,70 @@ ui <- page_navbar(
     card(
       card_header("Changelog"),
         tags$dl(
-        tags$dt("2026-11-03 — Expandable screens in the Gene Explorer"),
-        tags$dd("Screens with several results are marked ▸. Click one of a paper's dots, or pick it under Expand papers, to show each timepoint, replicate, dose, or derived table as an indented row; click again to collapse."),
-        tags$dt("2026-11-03 — BrimEdwards2026 and Diepstraten2026"),
-        tags$dd("Added the BrimEdwards2026 OCI-AML2 AZD4320 knockout screen (other BH3 mimetics) and the Diepstraten2026 Partita CRISPRa venetoclax hit lists. Updated data-availability notes for nine further candidates in the additional-screens catalog."),
-        tags$dt("2026-11-03 — Stewart2026 unnormalized arms"),
-        tags$dd("Stewart2026 venetoclax and venetoclax + palbociclib values are now median-centered, and their published FDRs no longer count as significant; this removes about 32,000 artifactual significant rows. The published values remain available under the Raw effect (as published) and Signed −log₁₀ FDR metrics."),
-        tags$dt("2026-11-03 — Wang2023, Sharon2019, Yokoyama2026, and Stewart2026"),
-        tags$dd("Added four studies from the additional-screens catalog: Wang2023 (MOLM-13 genome-wide and RNA-binding-protein libraries), Sharon2019 (acquired-resistant MOLM13-R1), Yokoyama2026 (peripheral T-cell lymphoma; venetoclax, navitoclax, ABBV-467), and Stewart2026 (OCI-AML2 venetoclax, palbociclib, and their combination). The Gene Explorer screen view now covers 17 venetoclax screens."),
-        tags$dt("2026-11-03 — Deng2022 CRISPRa venetoclax screens"),
-        tags$dd("Added the Deng2022 genome-wide CRISPR activation screens in mouse lymphoma lines #214 and #216 as gain-of-function hit lists from the published enriched-sgRNA tables (IC80 venetoclax vs DMSO). Mouse A1 paralogs (Bcl2a1a/b/c/d) now map to human BCL2A1, which also merges those Nakao2023 rows. The Deng2022 lymphoma vs B-ALL RNA-seq comparison was removed: it compared tumour types rather than venetoclax response, and its 6,895 FDR-significant genes inflated cross-study recurrence."),
-        tags$dt("2026-11-03 — Gene Explorer screen summary view"),
-        tags$dd("The Gene Explorer now opens on one row per independent screen, grouped by venetoclax context, with one panel per gene on a shared within-screen percentile axis and a per-gene summary of top/bottom-10% screens. Other BH3 mimetics and CRISPRa, ORF, and BH3-priming assays can be added with toggles; the previous all-results plot remains available under View."),
-        tags$dt("2026-11-03 — Effect sign, normalization, and rank fixes (v0.1.1)"),
+        tags$dt("2026-11-03"),
         tags$dd(
           tags$ul(
-            tags$li("MAGeCK negative-selection arms (Nechiporuk2019, Glytsou2023) now keep the signed gene LFC, and positive-selection arms no longer force it positive. Previously enriched resistance genes such as BAX and TP53 appeared as depleted in negative-selection arms."),
-            tags$li("Eide2023 count-derived fold-changes are now normalized to the median library size and centered on the median gene, removing a −1.3 to −3.2 log₂ depth offset."),
-            tags$li("Portelinha2024 ranks are now computed across genes; previously every gene had rank 1.")
+            tags$li(tags$strong("Expandable screens in the Gene Explorer"), " — ", "Screens with several results are marked ▸. Click one of a paper's dots, or pick it under Expand papers, to show each timepoint, replicate, dose, or derived table as an indented row; click again to collapse."),
+            tags$li(tags$strong("BrimEdwards2026 and Diepstraten2026"), " — ", "Added the BrimEdwards2026 OCI-AML2 AZD4320 knockout screen (other BH3 mimetics) and the Diepstraten2026 Partita CRISPRa venetoclax hit lists. Updated data-availability notes for nine further candidates in the additional-screens catalog."),
+            tags$li(tags$strong("Stewart2026 unnormalized arms"), " — ", "Stewart2026 venetoclax and venetoclax + palbociclib values are now median-centered, and their published FDRs no longer count as significant; this removes about 32,000 artifactual significant rows. The published values remain available under the Raw effect (as published) and Signed −log₁₀ FDR metrics."),
+            tags$li(tags$strong("Wang2023, Sharon2019, Yokoyama2026, and Stewart2026"), " — ", "Added four studies from the additional-screens catalog: Wang2023 (MOLM-13 genome-wide and RNA-binding-protein libraries), Sharon2019 (acquired-resistant MOLM13-R1), Yokoyama2026 (peripheral T-cell lymphoma; venetoclax, navitoclax, ABBV-467), and Stewart2026 (OCI-AML2 venetoclax, palbociclib, and their combination). The Gene Explorer screen view now covers 17 venetoclax screens."),
+            tags$li(tags$strong("Deng2022 CRISPRa venetoclax screens"), " — ", "Added the Deng2022 genome-wide CRISPR activation screens in mouse lymphoma lines #214 and #216 as gain-of-function hit lists from the published enriched-sgRNA tables (IC80 venetoclax vs DMSO). Mouse A1 paralogs (Bcl2a1a/b/c/d) now map to human BCL2A1, which also merges those Nakao2023 rows. The Deng2022 lymphoma vs B-ALL RNA-seq comparison was removed: it compared tumour types rather than venetoclax response, and its 6,895 FDR-significant genes inflated cross-study recurrence."),
+            tags$li(tags$strong("Gene Explorer screen summary view"), " — ", "The Gene Explorer now opens on one row per independent screen, grouped by venetoclax context, with one panel per gene on a shared within-screen percentile axis and a per-gene summary of top/bottom-10% screens. Other BH3 mimetics and CRISPRa, ORF, and BH3-priming assays can be added with toggles; the previous all-results plot remains available under View."),
+            tags$li(
+              tags$strong("Effect sign, normalization, and rank fixes (v0.1.1)"),
+              tags$ul(
+                tags$li("MAGeCK negative-selection arms (Nechiporuk2019, Glytsou2023) now keep the signed gene LFC, and positive-selection arms no longer force it positive. Previously enriched resistance genes such as BAX and TP53 appeared as depleted in negative-selection arms."),
+                tags$li("Eide2023 count-derived fold-changes are now normalized to the median library size and centered on the median gene, removing a −1.3 to −3.2 log₂ depth offset."),
+                tags$li("Portelinha2024 ranks are now computed across genes; previously every gene had rank 1.")
+              )
+            )
           )
         ),
-        tags$dt("2026-08-25 — Nakao2023 MARCH5 CRISPR screens"),
-        tags$dd("Added three mouse mMA9Cas drug-vs-DMSO screen re-analyses from published sgRNA counts. DrugZ normalized Z and directional FDR drive browser rows; MAGeCK MLE results are retained for provenance and paper-figure concordance."),
-        tags$dt("2026-07-03 — He2026 BH3-priming CRISPR screen"),
-        tags$dd("Added He2026 Figure 1 source-data combined MAGeCK gene-level LFC and p-values for the P1-R/P2-R BH3-priming screen, plus separate P1-R and P2-R sgRNA RPM-derived LFC summaries without p-values/FDRs."),
-        tags$dt("2026-05-25 — BeatAML2 gene-set sensitivity context"),
-        tags$dd("Added curated gene-set scoring to the External Context expression-vs-AUC view, allowing pathway-like RNA signatures to be compared against BeatAML2 venetoclax response."),
-        tags$dt("2026-05-25 — Lin2019 paper-threshold hits"),
-        tags$dd("Annotated Lin2019 average drug-sensitivity hits using the paper's cutoff, Avg_sens < -0.914, while keeping p-value and FDR fields blank because they are not present in the source table."),
-        tags$dt("2026-05-25 — External venetoclax sensitivity context"),
-        tags$dd("Added Eide2023 CRISPR count summaries to the core gene browser, plus an External Context tab for BeatAML2/Eide2023 ex vivo venetoclax drug response and Zhang2024 CRISPR library coverage."),
-        tags$dt("2026-05-23 — MAGeCK LFC fallback removed"),
-        tags$dd("MAGeCK experiments without a reported LFC column now omit that selection arm entirely, rather than substituting −log₁₀(p-value) as a proxy effect size. Affected: Nechiporuk2019 Y. Kosuke library day 14 negative selection arm, which the authors did not report in the supplementary table."),
-        tags$dt("2026-05-23 — Guièze2019 ORF screen documented"),
-        tags$dd("Added a data note explaining that ORF hits are defined per the paper's own threshold (any construct with LFC ≥ 2), that the library averaged ~1.3 constructs per gene, and that most genes lack multi-construct validation."),
-        tags$dt("2026-05-23 — Cross-paper axis normalization"),
+        tags$dt("2026-08-25"),
         tags$dd(
-          "Added a ", tags$em("Cross-paper axis"), " dropdown to the Gene Explorer sidebar with three options:",
           tags$ul(
-            tags$li(tags$strong("Signed −log₁₀(FDR/p-value)"), " — default; places all studies on a comparable significance scale regardless of the underlying effect metric (STARS score, MAGeCK LFC, delta CRISPR score, etc.)."),
-            tags$li(tags$strong("Per-experiment z-score"), " — normalizes each experiment to its own mean and SD across all genes."),
-            tags$li(tags$strong("Raw effect value"), " — paper-native units; scales are not directly comparable across studies.")
+            tags$li(tags$strong("Nakao2023 MARCH5 CRISPR screens"), " — ", "Added three mouse mMA9Cas drug-vs-DMSO screen re-analyses from published sgRNA counts. DrugZ normalized Z and directional FDR drive browser rows; MAGeCK MLE results are retained for provenance and paper-figure concordance.")
           )
         ),
-        tags$dt("2026-05-23 — Layout improvements"),
-        tags$dd("Baseline Dependency Context and Source Detail sections converted to collapsed accordions so the main effects plot is visible on load. Page set to scroll rather than fit content to viewport."),
-        tags$dt("2026-04-27 — Lin2019 baseline dependency context"),
-        tags$dd("Added Lin2019 essentiality three-scores as a baseline panel alongside DepMap CRISPR KO in the Gene Explorer."),
-        tags$dt("2026-04-27 — DepMap dependency plot"),
-        tags$dd("Added DepMap Public 26Q1 CRISPR gene-effect scores for MOLM-13, THP-1, and OCI-LY19 as a baseline context panel in the Gene Explorer."),
-        tags$dt("2026-04-27 — Initial release"),
-        tags$dd("Gene Explorer, Paper Explorer, Cross-study Overview, and About Data tabs covering Chen2019, Deng2022, Glytsou2023, Guièze2019, Lin2019, Nechiporuk2019, and Portelinha2024.")
+        tags$dt("2026-07-03"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("He2026 BH3-priming CRISPR screen"), " — ", "Added He2026 Figure 1 source-data combined MAGeCK gene-level LFC and p-values for the P1-R/P2-R BH3-priming screen, plus separate P1-R and P2-R sgRNA RPM-derived LFC summaries without p-values/FDRs.")
+          )
+        ),
+        tags$dt("2026-05-25"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("BeatAML2 gene-set sensitivity context"), " — ", "Added curated gene-set scoring to the External Context expression-vs-AUC view, allowing pathway-like RNA signatures to be compared against BeatAML2 venetoclax response."),
+            tags$li(tags$strong("Lin2019 paper-threshold hits"), " — ", "Annotated Lin2019 average drug-sensitivity hits using the paper's cutoff, Avg_sens < -0.914, while keeping p-value and FDR fields blank because they are not present in the source table."),
+            tags$li(tags$strong("External venetoclax sensitivity context"), " — ", "Added Eide2023 CRISPR count summaries to the core gene browser, plus an External Context tab for BeatAML2/Eide2023 ex vivo venetoclax drug response and Zhang2024 CRISPR library coverage.")
+          )
+        ),
+        tags$dt("2026-05-23"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("MAGeCK LFC fallback removed"), " — ", "MAGeCK experiments without a reported LFC column now omit that selection arm entirely, rather than substituting −log₁₀(p-value) as a proxy effect size. Affected: Nechiporuk2019 Y. Kosuke library day 14 negative selection arm, which the authors did not report in the supplementary table."),
+            tags$li(tags$strong("Guièze2019 ORF screen documented"), " — ", "Added a data note explaining that ORF hits are defined per the paper's own threshold (any construct with LFC ≥ 2), that the library averaged ~1.3 constructs per gene, and that most genes lack multi-construct validation."),
+            tags$li(
+              tags$strong("Cross-paper axis normalization"), " — ",
+              "Added a ", tags$em("Cross-paper axis"), " dropdown to the Gene Explorer sidebar with three options:",
+              tags$ul(
+                tags$li(tags$strong("Signed −log₁₀(FDR/p-value)"), " — default; places all studies on a comparable significance scale regardless of the underlying effect metric (STARS score, MAGeCK LFC, delta CRISPR score, etc.)."),
+                tags$li(tags$strong("Per-experiment z-score"), " — normalizes each experiment to its own mean and SD across all genes."),
+                tags$li(tags$strong("Raw effect value"), " — paper-native units; scales are not directly comparable across studies.")
+              )
+            ),
+            tags$li(tags$strong("Layout improvements"), " — ", "Baseline Dependency Context and Source Detail sections converted to collapsed accordions so the main effects plot is visible on load. Page set to scroll rather than fit content to viewport.")
+          )
+        ),
+        tags$dt("2026-04-27"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("Lin2019 baseline dependency context"), " — ", "Added Lin2019 essentiality three-scores as a baseline panel alongside DepMap CRISPR KO in the Gene Explorer."),
+            tags$li(tags$strong("DepMap dependency plot"), " — ", "Added DepMap Public 26Q1 CRISPR gene-effect scores for MOLM-13, THP-1, and OCI-LY19 as a baseline context panel in the Gene Explorer."),
+            tags$li(tags$strong("Initial release"), " — ", "Gene Explorer, Paper Explorer, Cross-study Overview, and About Data tabs covering Chen2019, Deng2022, Glytsou2023, Guièze2019, Lin2019, Nechiporuk2019, and Portelinha2024.")
+          )
+        )
       )
     )
   )
