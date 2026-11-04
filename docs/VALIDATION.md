@@ -19,11 +19,12 @@ The public repository and release v0.1.0 were verified on 1 November 2026. All f
 
 The downloader was also checked to skip already verified local files and to preserve an existing mismatched cache while reporting an actionable error. These checks do not establish a clean dependency installation on another operating system.
 
-## v0.1.1 rebuild (3 November 2026)
+## v0.1.2 release (3 November 2026)
 
-The `gene_scores.rds` and `external_context.rds` caches were rebuilt from the local source inputs after fixing MAGeCK selection-arm signs, Eide2023 depth normalization, and Portelinha2024 ranks. `depmap_crispr.rds` and `additional_screen_candidates.rds` are unchanged from v0.1.0.
+v0.1.2 is the first release after v0.1.0; a v0.1.1 cache set was prepared but never published. The caches were rebuilt from local source inputs. `depmap_crispr.rds` is unchanged from v0.1.0; `gene_scores.rds`, `external_context.rds`, and `additional_screen_candidates.rds` were rebuilt.
 
-- Row count (439,550), studies (10), and displayed experiments (37) are unchanged.
-- Compared with v0.1.0, only the intended fields changed: effect values and directions in Glytsou2023 and Nechiporuk2019 MAGeCK arms, Eide2023 effect values, ranks, and directions, and Portelinha2024 ranks. All other studies, and all external-context tables except the Eide2023 CRISPR summary, are identical.
-- `scripts/smoke_test.R` adds three checks: BAX is enriched in every MAGeCK selection arm and Eide2023 venetoclax experiment, Eide2023 experiment medians are within 0.1 of zero, and no experiment has a constant rank. All three fail on the v0.1.0 cache and pass on the rebuilt cache. The full smoke test passed.
-- `Rscript --vanilla scripts/check_release.R` passed with the updated cache manifest.
+- Gene-score cache: 884,653 rows, 16 studies, 68 displayed experiments (v0.1.0: 439,550 rows, 10 studies, 37 experiments). Added studies: Wang2023, Sharon2019, Yokoyama2026, Stewart2026, BrimEdwards2026, and Diepstraten2026; Deng2022 now contributes its CRISPRa hit lists instead of RNA-seq differential expression.
+- Fixes relative to v0.1.0: MAGeCK selection arms keep the signed gene LFC (Glytsou2023, Nechiporuk2019), Eide2023 count summaries are depth-normalized and median-centered, Portelinha2024 ranks are computed across genes, and Stewart2026's unnormalized venetoclax arms are median-centered with their published FDRs kept aside. For each change, rows outside the intended studies were checked to be byte-identical before and after.
+- `scripts/smoke_test.R` passed against the source rebuild, including biological checks for every added study (for example BAX enrichment in all MAGeCK and Eide2023 venetoclax arms, A1/BCL2A1 enrichment in both Deng2022 CRISPRa lines, and no FDR-based significance from the Stewart2026 unnormalized arms).
+- `Rscript --vanilla scripts/check_release.R` passed with the updated cache manifest, including Gene Explorer screen-view, metric, and expansion queries.
+- BrimEdwards2026 gene results are re-derived from GEO counts by `scripts/build_brimedwards2026.R`, which needs edgeR (Bioconductor; not in `renv.lock`). The distributed cache already contains these results, so running the app does not need edgeR.

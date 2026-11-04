@@ -455,7 +455,7 @@ ui <- page_navbar(
             tags$li(tags$strong("Deng2022 CRISPRa venetoclax screens"), " — ", "Added the Deng2022 genome-wide CRISPR activation screens in mouse lymphoma lines #214 and #216 as gain-of-function hit lists from the published enriched-sgRNA tables (IC80 venetoclax vs DMSO). Mouse A1 paralogs (Bcl2a1a/b/c/d) now map to human BCL2A1, which also merges those Nakao2023 rows. The Deng2022 lymphoma vs B-ALL RNA-seq comparison was removed: it compared tumour types rather than venetoclax response, and its 6,895 FDR-significant genes inflated cross-study recurrence."),
             tags$li(tags$strong("Gene Explorer screen summary view"), " — ", "The Gene Explorer now opens on one row per independent screen, grouped by venetoclax context, with one panel per gene on a shared within-screen percentile axis and a per-gene summary of top/bottom-10% screens. Other BH3 mimetics and CRISPRa, ORF, and BH3-priming assays can be added with toggles; the previous all-results plot remains available under View."),
             tags$li(
-              tags$strong("Effect sign, normalization, and rank fixes (v0.1.1)"),
+              tags$strong("Effect sign, normalization, and rank fixes (v0.1.2)"),
               tags$ul(
                 tags$li("MAGeCK negative-selection arms (Nechiporuk2019, Glytsou2023) now keep the signed gene LFC, and positive-selection arms no longer force it positive. Previously enriched resistance genes such as BAX and TP53 appeared as depleted in negative-selection arms."),
                 tags$li("Eide2023 count-derived fold-changes are now normalized to the median library size and centered on the median gene, removing a −1.3 to −3.2 log₂ depth offset."),
