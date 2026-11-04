@@ -11,7 +11,7 @@ The core cache contains sixteen studies. It combines survival-selection knockout
 ## Current limitations
 
 - The significant/annotated flag can use nominal p <= 0.05 when FDR is available but exceeds 0.05. A positive flag therefore does not imply adjusted significance. Missing FDR values pass the current FDR filter.
-- MAGeCK positive- and negative-selection arms both report the signed gene-level LFC; the arm determines only which p-value, FDR, and rank are shown. Releases before v0.1.1 imposed the arm's sign on the effect magnitude, so enriched genes appeared depleted in negative-selection arms.
+- MAGeCK positive- and negative-selection arms both report the signed gene-level LFC; the arm determines only which p-value, FDR, and rank are shown. Releases before v0.1.2 imposed the arm's sign on the effect magnitude, so enriched genes appeared depleted in negative-selection arms.
 - Raw scores use different units. Neither raw-effect heatmap colors nor a common magnitude threshold establish comparable biological effects across studies. Centering an experiment to a z-score can change an effect's sign.
 - Eide2023 guide-count summaries scale each sample to the median library size and center each experiment on its median gene (the library has no non-targeting guides). They are still exploratory treatment/control ratios without replicate-aware scoring, guide/control QC, p-values, or FDRs.
 - Patient expression/response correlations may include repeated specimens and measurements from the same subject; reported row counts are not independent-subject counts.
