@@ -31,7 +31,7 @@ v0.1.2 is the first release after v0.1.0; a v0.1.1 cache set was prepared but ne
 
 ### Verification after publication (v0.1.2)
 
-Release v0.1.2 was published on 3 November 2026 from `main` at fe18aff (merges of #1 and #2), with the four caches above as assets. In a fresh clone of `main` with no local caches:
+Release v0.1.2 was published on 3 November 2026 from `main` at c37e764 (merges of #1 and #2; commit IDs as rewritten on 3 November 2026 to remove attribution trailers), with the four caches above as assets. In a fresh clone of `main` with no local caches:
 
 - `scripts/download_prepared_data.R` downloaded all four assets from v0.1.2, and each matched the byte size and SHA-256 recorded in `data/metadata/cache_manifest.csv`. A second run skipped all four as already verified.
 - `Rscript --vanilla scripts/check_release.R` passed: 884,653 rows, 16 studies, 68 displayed experiments, including app construction and the Gene Explorer screen-view, metric, and expansion server queries.
