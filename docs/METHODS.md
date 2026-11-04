@@ -4,7 +4,7 @@ This is an exploratory browser of heterogeneous published results, not a validat
 
 ## Included evidence
 
-The core cache contains ten studies. It combines survival-selection knockout screens, ORF overexpression, BH3-priming sorting, baseline essentiality, and contextual RNA-seq differential expression. Treatment arms include venetoclax, other BH3 mimetics, and combinations. Compare source-native results within their experimental context.
+The core cache contains ten studies. It combines survival-selection knockout screens, ORF overexpression and CRISPR activation screens, BH3-priming sorting, and baseline essentiality. Treatment arms include venetoclax, other BH3 mimetics, and combinations. Compare source-native results within their experimental context.
 
 `data/metadata/included_screen_inventory.csv` records biological screen units and source links. `experiment_to_screen_mapping.csv` maps displayed experiments to those units. Replicates, timepoints, selection tests, and derived summaries do not establish independent biological replication. The app's current recurrence table still counts dataset presence and experiment labels; it does not use these registries to calculate replicated directional support.
 
@@ -15,7 +15,7 @@ The core cache contains ten studies. It combines survival-selection knockout scr
 - Raw scores use different units. Neither raw-effect heatmap colors nor a common magnitude threshold establish comparable biological effects across studies. Centering an experiment to a z-score can change an effect's sign.
 - Eide2023 guide-count summaries scale each sample to the median library size and center each experiment on its median gene (the library has no non-targeting guides). They are still exploratory treatment/control ratios without replicate-aware scoring, guide/control QC, p-values, or FDRs.
 - Patient expression/response correlations may include repeated specimens and measurements from the same subject; reported row counts are not independent-subject counts.
-- Gene matching normalizes symbols and uses curated aliases; it does not perform formal human/mouse orthology mapping. TP53 and mouse Trp53 remain separate keys.
+- Gene matching normalizes symbols and uses curated aliases; it does not perform formal human/mouse orthology mapping. TP53 and mouse Trp53 remain separate keys. The four mouse A1 paralogs (Bcl2a1a/b/c/d) map to human BCL2A1; in the Gene Explorer screen view, merged paralogs keep their most extreme value.
 - Paper Explorer previews at most 10,000 rows. Its table CSV can be a subset; use the separate Download View control for the full filtered view.
 
 These limitations affect interpretation and target prioritization. They do not prevent sharing the software as a work in progress. The next scientific milestones are in [PUBLICATION_PLAN.md](PUBLICATION_PLAN.md).
@@ -27,11 +27,11 @@ The default Gene Explorer view shows one representative result per independent s
 - Repeat timepoints use the latest timepoint. Guièze2019 STARS uses replicate 1.
 - MAGeCK screens list both selection arms. Each gene takes the arm that matches its LFC sign, so the displayed FDR is the directional one.
 - Derived aggregates, hit subsets, and Lin2019 essentiality scores are excluded.
-- Screens are grouped as venetoclax in AML, venetoclax in lymphoid models, and venetoclax combinations (shown by default), plus other BH3 mimetics and ORF, priming, and expression assays (optional).
+- Screens are grouped as venetoclax in AML, venetoclax in lymphoid models, and venetoclax combinations (shown by default), plus other BH3 mimetics and CRISPRa, ORF, and BH3-priming assays (optional).
 
-The axis is a signed within-screen percentile, from −1 (most depleted) to +1 (most enriched), computed among all genes in that screen. Lin2019 percentiles are relative to its metabolic library. Guièze2019 STARS and Portelinha2024 tables list only selected genes, so listed genes are shown without a percentile.
+The axis is a signed within-screen percentile, from −1 (most depleted) to +1 (most enriched), computed among all genes in that screen. Lin2019 percentiles are relative to its metabolic library. Guièze2019 STARS, Portelinha2024, and the Deng2022 CRISPRa tables list only selected genes, so listed genes are shown without a percentile.
 
-The per-gene summary counts venetoclax screens in which the gene falls in the top or bottom 10%, and how many of those also have FDR ≤ 0.05. Hit-list screens count as tested for every gene: a listed gene with FDR ≤ 0.05 counts as resistance, and an unlisted gene counts as no signal. This is a descriptive summary, not a meta-analysis. Percentiles are not comparable between ORF, BH3-priming, or expression assays and knockout survival screens.
+The per-gene summary counts venetoclax screens in which the gene falls in the top or bottom 10%, and how many of those also have FDR ≤ 0.05. Hit-list screens count as tested for every gene: a listed gene with FDR ≤ 0.05 counts as resistance, and an unlisted gene counts as no signal. This is a descriptive summary, not a meta-analysis. Percentiles are not comparable between ORF or BH3-priming assays and knockout survival screens.
 
 ## Study-specific processing
 
@@ -41,7 +41,7 @@ He2026 includes Figure 1 combined MAGeCK results with p-values and P1-R/P2-R sgR
 
 Nakao2023 uses DrugZ normalized Z as its drug-vs-DMSO effect, with directional p-values/FDRs. MAGeCK MLE results remain audit fields. DrugZ v1.1.0.2 build 116 uses 10-million-read normalization, pseudocount 5, and half-window 500. MAGeCK 0.5.9.5 uses median normalization. Non-targeting and miRNA pseudo-genes remain in the analysis but are omitted from browser rows. The original local analysis manifest records source/output SHA-256 hashes and commands; full source workbooks and intermediate results are not needed to run the prepared browser.
 
-Deng2022 contributes contextual CRISPRa-associated RNA-seq differential expression, rather than directly equivalent knockout scores.
+Deng2022's genome-wide CRISPR activation screens use the published Supplementary Data 2 tables: significantly enriched sgRNAs from edgeR/voom, IC80 venetoclax (30 nM for line #214, 15 nM for #216) vs DMSO. They are imported as hit lists, with each gene key keeping its strongest guide (lowest FDR, then largest logFC). The raw counts in Supplementary Data 3 are heavily bottlenecked: fewer than 40% of guides are detected even before treatment, and about 1% after. They are not reanalyzed into genome-wide scores. CRISPRa is a gain-of-function perturbation, so enrichment means that activating the gene confers resistance; it is grouped with the ORF screen, not with the knockouts. The paper's lymphoma vs B-ALL RNA-seq comparison is not imported: it compares tumour types (8 vs 2 samples, sequenced on different platforms) rather than measuring venetoclax response, and it served to validate the lymphoma model.
 
 DepMap Public 26Q1 contributes baseline CRISPR gene effects for MOLM-13, THP-1, and OCI-LY19. OCI-Ly1 has no direct match in this layer. Baseline dependency is context, not a treatment-response effect or an established therapeutic window.
 

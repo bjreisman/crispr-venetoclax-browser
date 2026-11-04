@@ -1,7 +1,6 @@
 paper,experiment,parent_screen_ids,role,counting_rationale,source_urls
 Chen2019,Venetoclax vs DMSO day 16,chen_molm13_ven,screen_result,Repeated timepoints of one screen,https://pmc.ncbi.nlm.nih.gov/articles/PMC6606342/
 Chen2019,Venetoclax vs DMSO day 8,chen_molm13_ven,screen_result,Repeated timepoints of one screen,https://pmc.ncbi.nlm.nih.gov/articles/PMC6606342/
-Deng2022,Eµ-Myc/dCas9a-SAM vs B-ALL expression,,excluded_expression_context,Imported RNA-seq differential expression; no direct CRISPR screen score,
 Eide2023,OCI-AML2 Yusa library day 14 venetoclax vs DMSO,eide_ven,screen_result,Days 14 and 21 are repeated timepoints,https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE216087
 Eide2023,OCI-AML2 Yusa library day 14 venetoclax+ruxolitinib vs DMSO,eide_ven_rux,screen_result,Days 14 and 21 are repeated timepoints,https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE216087
 Eide2023,OCI-AML2 Yusa library day 21 venetoclax vs DMSO,eide_ven,screen_result,Days 14 and 21 are repeated timepoints,https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE216087
@@ -36,3 +35,5 @@ Nechiporuk2019,Y. Kosuke library venetoclax vs DMSO day 7 | negative selection,n
 Nechiporuk2019,Y. Kosuke library venetoclax vs DMSO day 7 | positive selection,nechiporuk_ykosuke_ven,screen_result,Selection directions and timepoints collapsed,https://pmc.ncbi.nlm.nih.gov/articles/PMC6606338/
 Portelinha2024,Positive selection screen table 1,portelinha_ven,screen_result,Tables S1 and S2 are distinct venetoclax and S63845 screens,https://pmc.ncbi.nlm.nih.gov/articles/PMC11380151/
 Portelinha2024,Positive selection screen table 2,portelinha_s63845,screen_result,Tables S1 and S2 are distinct venetoclax and S63845 screens,https://pmc.ncbi.nlm.nih.gov/articles/PMC11380151/
+Deng2022,CRISPRa line #214 venetoclax IC80 (30 nM) vs DMSO | enriched sgRNAs,deng_crispra_214,screen_result,Published enriched-sgRNA hit list; gain-of-function screen counted separately from knockout screens,https://doi.org/10.1038/s41467-022-32485-9
+Deng2022,CRISPRa line #216 venetoclax IC80 (15 nM) vs DMSO | enriched sgRNAs,deng_crispra_216,screen_result,Published enriched-sgRNA hit list; gain-of-function screen counted separately from knockout screens,https://doi.org/10.1038/s41467-022-32485-9

@@ -10,8 +10,6 @@ effect_color_values <- c(
   "ORF overexpression depleted" = "#247a6b",
   "higher score" = "#7a5c1f",
   "lower score" = "#326b9a",
-  "higher in Eµ-Myc/dCas9a-SAM" = "#8a4f9e",
-  "higher in B-ALL" = "#4b7f9f",
   "neutral" = "#767676",
   "unknown" = "#9a9a9a"
 )
@@ -434,8 +432,6 @@ plot_external_crispr_rank <- function(df, top_n = 20) {
     layout(legend = list(orientation = "h", y = -0.18))
 }
 
-screen_hit_list_x <- 1.35
-
 screen_panel_levels <- function(df) {
   groups <- screen_view_groups[screen_view_groups %in% as.character(df$screen_group)]
   unlist(lapply(groups, function(group) {
@@ -451,18 +447,30 @@ screen_panel_height <- function(df) {
   max(360, 110 + panel_rows * (22 * n_rows + 40))
 }
 
-plot_screen_panels <- function(df, gene_order = unique(df$gene_key)) {
+plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "percentile") {
+  spec <- screen_metrics[[metric]]
+  df <- df |>
+    mutate(value = .data[[spec$column]]) |>
+    filter(!is.na(.data$value) | (spec$hit_list_column & .data$hit_list_only))
   if (!nrow(df)) return(plotly_empty(type = "scatter", mode = "markers"))
 
   y_levels <- screen_panel_levels(df)
+  finite_values <- df$value[is.finite(df$value)]
+  value_range <- range(c(0, finite_values, if (is.finite(spec$band)) c(-spec$band, spec$band)))
+  if (identical(metric, "percentile")) value_range <- c(-1, 1)
+  span <- diff(value_range)
+  hit_list_x <- value_range[2] + 0.17 * span
+  show_hit_list <- spec$hit_list_column && any(df$hit_list_only)
+  x_limits <- c(value_range[1] - 0.04 * span, if (show_hit_list) hit_list_x + 0.06 * span else value_range[2] + 0.04 * span)
+
   plot_df <- df |>
     group_by(.data$gene_key) |>
     mutate(gene_display = format_gene_symbols(.data$gene_symbol)) |>
     ungroup() |>
     mutate(
-      x = dplyr::if_else(.data$hit_list_only, screen_hit_list_x, .data$percentile),
+      x = dplyr::if_else(spec$hit_list_column & .data$hit_list_only, hit_list_x, .data$value),
       marker = dplyr::case_when(
-        .data$hit_list_only ~ "In published hit list",
+        spec$hit_list_column & .data$hit_list_only ~ "In published hit list",
         .data$supported ~ "FDR ≤ 0.05 or paper threshold",
         TRUE ~ "Not significant or no statistics"
       ),
@@ -472,11 +480,18 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key)) {
         "<br>", .data$paper, " — ", .data$experiment,
         dplyr::if_else(
           .data$hit_list_only,
-          "<br>Listed in a published hit table (not genome-wide; no percentile)",
-          paste0("<br>Within-screen percentile: ", sprintf("%+.2f", .data$percentile), " of ", format(.data$screen_genes, big.mark = ","), " genes")
+          "<br>Listed in a published hit table (not genome-wide; no percentile or z-score)",
+          paste0(
+            "<br>Within-screen percentile: ", sprintf("%+.2f", .data$percentile), " of ", format(.data$screen_genes, big.mark = ","), " genes",
+            "<br>Robust z-score: ", sprintf("%+.1f", .data$robust_z)
+          )
         ),
         "<br>", .data$effect_metric, ": ", signif(.data$effect_value, 3),
-        "<br>FDR: ", dplyr::if_else(is.na(.data$fdr), "not reported", as.character(signif(.data$fdr, 3))),
+        "<br>FDR: ", dplyr::case_when(
+          is.na(.data$fdr) ~ "not reported",
+          .data$fdr <= 0 ~ "reported as 0",
+          TRUE ~ as.character(signif(.data$fdr, 3))
+        ),
         "<br>", .data$significance
       )
     )
@@ -488,24 +503,35 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key)) {
     "In published hit list" = 18
   )
 
-  p <- ggplot(plot_df, aes(x = x, y = y, shape = marker, text = label)) +
-    annotate("rect", xmin = screen_signal_cutoff, xmax = 1.03, ymin = 0.5, ymax = length(y_levels) + 0.5, fill = "#b73e3e", alpha = 0.1) +
-    annotate("rect", xmin = -1.03, xmax = -screen_signal_cutoff, ymin = 0.5, ymax = length(y_levels) + 0.5, fill = "#247a6b", alpha = 0.1) +
+  breaks <- if (identical(metric, "percentile")) c(-1, 0, 1) else pretty(value_range, n = 4)
+  breaks <- breaks[breaks >= value_range[1] & breaks <= value_range[2]]
+  break_labels <- sub("^-", "−", format(breaks, trim = TRUE))
+  if (identical(metric, "percentile")) break_labels <- c("−1", "0", "+1")
+  if (show_hit_list) {
+    breaks <- c(breaks, hit_list_x)
+    break_labels <- c(break_labels, "hit list")
+  }
+
+  p <- ggplot(plot_df, aes(x = x, y = y, shape = marker, text = label))
+  if (is.finite(spec$band)) {
+    p <- p +
+      annotate("rect", xmin = spec$band, xmax = value_range[2] + 0.02 * span, ymin = 0.5, ymax = length(y_levels) + 0.5, fill = "#b73e3e", alpha = 0.1) +
+      annotate("rect", xmin = value_range[1] - 0.02 * span, xmax = -spec$band, ymin = 0.5, ymax = length(y_levels) + 0.5, fill = "#247a6b", alpha = 0.1)
+  }
+  p <- p +
     geom_vline(xintercept = 0, color = "#b9b9b9", linewidth = 0.35) +
     geom_point(size = 3, color = "#2a6fb0", stroke = 1) +
     scale_shape_manual(values = marker_shapes, name = NULL, drop = FALSE) +
     scale_y_discrete(limits = rev(y_levels), drop = FALSE) +
-    scale_x_continuous(
-      limits = c(-1.08, screen_hit_list_x + 0.12),
-      breaks = c(-1, 0, 1, screen_hit_list_x),
-      labels = c("−1", "0", "+1", "hit list")
-    ) +
+    scale_x_continuous(limits = x_limits, breaks = breaks, labels = break_labels) +
     facet_wrap(~gene_display, ncol = min(4, dplyr::n_distinct(plot_df$gene_key))) +
-    labs(x = "← sensitizing    within-screen percentile    resistance →", y = NULL) +
+    labs(x = spec$axis, y = NULL) +
     theme_minimal(base_size = 12) +
     theme(
       panel.grid.minor = element_blank(),
       panel.grid.major.y = element_line(color = "#f0f0ee", linewidth = 0.3),
+      panel.border = element_rect(color = "#aab4bb", fill = NA, linewidth = 0.6),
+      panel.spacing.x = grid::unit(14, "pt"),
       strip.text = element_text(face = "bold", size = 12),
       legend.position = "bottom",
       axis.text.y = element_text(size = 10.5)

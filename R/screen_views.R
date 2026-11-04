@@ -38,14 +38,57 @@ screen_view_registry <- tibble::tribble(
   "glytsou_mcl1i", "Glytsou2023", "MCL1i | negative selection", "Other BH3 mimetics", "Glytsou 2023 · MOLM-13 MCL1i", FALSE,
   "nakao_wt_s63845", "Nakao2023", "March5-WT mMA9Cas S63845 15 µM vs DMSO", "Other BH3 mimetics", "Nakao 2023 · mouse MLL-AF9 S63845", FALSE,
   "portelinha_s63845", "Portelinha2024", "Positive selection screen table 2", "Other BH3 mimetics", "Portelinha 2024 · OCI-LY19 S63845 (hit list)", TRUE,
+  "deng_crispra_214", "Deng2022", "CRISPRa line #214 venetoclax IC80 (30 nM) vs DMSO | enriched sgRNAs", "Other assays (direction not comparable)", "Deng 2022 · mouse lymphoma #214 CRISPRa (hit list)", TRUE,
+  "deng_crispra_216", "Deng2022", "CRISPRa line #216 venetoclax IC80 (15 nM) vs DMSO | enriched sgRNAs", "Other assays (direction not comparable)", "Deng 2022 · mouse lymphoma #216 CRISPRa (hit list)", TRUE,
   "guieze_orf_ven", "Guièze2019", "ORF overexpression screen | venetoclax 100 nM day 10", "Other assays (direction not comparable)", "Guièze 2019 · ORF overexpression", FALSE,
   "he_p1r", "He2026", "P1-R BH3 priming screen CytoC-high vs CytoC-low", "Other assays (direction not comparable)", "He 2026 · AML PDX P1-R BH3 priming", FALSE,
-  "he_p2r", "He2026", "P2-R BH3 priming screen CytoC-high vs CytoC-low", "Other assays (direction not comparable)", "He 2026 · AML PDX P2-R BH3 priming", FALSE,
-  "deng_expression", "Deng2022", "Eµ-Myc/dCas9a-SAM vs B-ALL expression", "Other assays (direction not comparable)", "Deng 2022 · mouse lymphoma expression", FALSE
+  "he_p2r", "He2026", "P2-R BH3 priming screen CytoC-high vs CytoC-low", "Other assays (direction not comparable)", "He 2026 · AML PDX P2-R BH3 priming", FALSE
 )
 
 # Top or bottom 10% of a screen on the signed percentile scale (-1 to +1).
 screen_signal_cutoff <- 0.8
+
+# Reported FDRs of 0 are drawn at this signed -log10 value.
+screen_fdr_cap <- 50
+
+# Axis options for the screen view. `band` shades |value| >= band; percentile
+# and robust z are undefined for hit-list tables, which get their own column.
+screen_metrics <- list(
+  percentile = list(
+    label = "Within-screen percentile",
+    column = "percentile",
+    band = screen_signal_cutoff,
+    band_note = "Shaded: top or bottom 10% of the screen",
+    axis = "← sensitizing    within-screen percentile    resistance →",
+    hit_list_column = TRUE
+  ),
+  robust_z = list(
+    label = "Robust z-score",
+    column = "robust_z",
+    band = 3,
+    band_note = "Shaded: |robust z| ≥ 3 (median and MAD within the screen)",
+    axis = "← sensitizing    robust z-score within screen    resistance →",
+    hit_list_column = TRUE
+  ),
+  signed_fdr = list(
+    label = "Signed −log₁₀ FDR",
+    column = "signed_log10_fdr",
+    band = -log10(0.05),
+    band_note = paste0("Shaded: FDR ≤ 0.05. FDR reported as 0 is drawn at ±", screen_fdr_cap, "."),
+    axis = "← sensitizing    signed −log₁₀ FDR (directional arm)    resistance →",
+    hit_list_column = FALSE
+  ),
+  raw = list(
+    label = "Raw effect (paper units)",
+    column = "effect_value",
+    band = NA_real_,
+    band_note = "Raw effects use each paper's own units and are not comparable between screens.",
+    axis = "← sensitizing    raw effect value (paper units)    resistance →",
+    hit_list_column = FALSE
+  )
+)
+
+screen_metric_choices <- stats::setNames(names(screen_metrics), vapply(screen_metrics, `[[`, character(1), "label"))
 
 build_screen_scores <- function(scores) {
   scores |>
@@ -65,6 +108,8 @@ build_screen_scores <- function(scores) {
         (.data$arm == "positive" & .data$effect_value >= 0) |
         (.data$arm == "negative" & .data$effect_value < 0)
     ) |>
+    # Mouse paralogs merged under one human key keep their most extreme value.
+    arrange(desc(abs(.data$effect_value))) |>
     distinct(.data$screen_id, .data$gene_key, .keep_all = TRUE) |>
     group_by(.data$screen_id) |>
     mutate(
@@ -73,17 +118,28 @@ build_screen_scores <- function(scores) {
         NA_real_,
         (rank(.data$effect_value, ties.method = "average") - 0.5) / dplyr::n() * 2 - 1
       ),
-      screen_genes = dplyr::n()
+      screen_genes = dplyr::n(),
+      robust_z = dplyr::if_else(
+        .data$hit_list_only | stats::mad(.data$effect_value) == 0,
+        NA_real_,
+        (.data$effect_value - stats::median(.data$effect_value)) / stats::mad(.data$effect_value)
+      )
     ) |>
     ungroup() |>
     mutate(
+      signed_log10_fdr = dplyr::case_when(
+        is.na(.data$fdr) ~ NA_real_,
+        .data$fdr <= 0 ~ sign(.data$effect_value) * screen_fdr_cap,
+        TRUE ~ sign(.data$effect_value) * pmin(-log10(.data$fdr), screen_fdr_cap)
+      ),
       supported = (!is.na(.data$fdr) & .data$fdr <= 0.05) | grepl("^paper threshold", .data$significance),
       screen_group = factor(.data$screen_group, levels = screen_view_groups)
     ) |>
     select(
       "screen_id", "screen_group", "short_label", "hit_list_only", "paper", "experiment",
       "experiment_id", "gene_key", "gene_symbol", "effect_metric", "effect_value",
-      "p_value", "fdr", "significance", "supported", "percentile", "screen_genes"
+      "p_value", "fdr", "significance", "supported", "percentile", "robust_z",
+      "signed_log10_fdr", "screen_genes"
     )
 }
 

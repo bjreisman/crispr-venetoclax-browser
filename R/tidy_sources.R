@@ -24,8 +24,8 @@ paper_metadata <- tibble::tribble(
   "Study of venetoclax resistance in lymphoid malignancies using parallel knockout and ORF overexpression screens, implicating BCL2-family buffering, lymphoid transcriptional regulators, AMPK/PKA signaling, and oxidative metabolism.",
   "Glytsou2023", 2023, "Genome-wide CRISPR/Cas9 loss-of-function screens", "MOLM-13 AML", "Human",
   "Parallel BH3-mimetic screens showing mitophagy and mitochondrial dynamics contribute to resistance or sensitivity to venetoclax-based combinations.",
-  "Deng2022", 2022, "CRISPRa-associated RNA-seq differential expression", "Eµ-Myc/dCas9a-SAM lymphoma and B-ALL", "Mouse",
-  "CRISPR activation mouse model used to study aggressive lymphoma and venetoclax resistance; included here as contextual expression output rather than a directly comparable knockout screen.",
+  "Deng2022", 2022, "Genome-wide CRISPR activation (CRISPRa) screens", "Eµ-Myc/dCas9a-SAM/sgBcl-2 mouse lymphoma lines #214 and #216", "Mouse",
+  "CRISPR activation mouse model of aggressive MYC/BCL-2 lymphoma. Genome-wide CRISPRa screens found that activating A1 (Bcl2a1; human BFL-1), BCL-XL, or MCL-1 confers venetoclax resistance. The browser includes the published enriched-sgRNA tables as gain-of-function hit lists.",
   "Portelinha2024", 2024, "Genome-wide CRISPR/Cas9 loss-of-function positive selection screens", "OCI-LY19 B-cell lymphoma", "Human",
   "B-cell lymphoma screens and functional work connecting SETD1B loss to apoptosis resistance and BCL2 independence.",
   "Eide2023", 2023, "Genome-wide CRISPR/Cas9 loss-of-function screen", "OCI-AML2 AML; venetoclax and venetoclax+ruxolitinib", "Human",
@@ -46,7 +46,12 @@ normalize_gene_symbol <- function(x) {
 gene_symbol_key_aliases <- c(
   ADSS = "ADSS2",
   ADSS1 = "ADSSL1",
-  TOMM70A = "TOMM70"
+  TOMM70A = "TOMM70",
+  # Mouse A1 paralogs share one human ortholog, BCL2A1 (BFL-1).
+  BCL2A1A = "BCL2A1",
+  BCL2A1B = "BCL2A1",
+  BCL2A1C = "BCL2A1",
+  BCL2A1D = "BCL2A1"
 )
 
 gene_key <- function(x) {
@@ -336,23 +341,45 @@ tidy_portelinha2024 <- function(root = ".") {
   )
 }
 
-tidy_deng2022 <- function(root = ".") {
-  source_file <- file.path(root, "Deng2022/tables/2022-06-29-DE_gene_list_groupEµ-Myc_dCas9a-SAM_vs_B-ALL_GGiner.csv")
-  raw <- readr::read_csv(source_file, show_col_types = FALSE)
-  gene_col <- if ("Symbol" %in% names(raw)) "Symbol" else names(raw)[2]
-  raw |>
-    transmute(
-      gene_symbol = .data[[gene_col]],
-      experiment = "Eµ-Myc/dCas9a-SAM vs B-ALL expression",
-      effect_metric = "limma voom logFC",
-      effect_value = logFC,
-      p_value = P.Value,
-      fdr = adj.P.Val,
-      rank = rank(-abs(logFC), ties.method = "first"),
-      direction = classify_direction(logFC, "higher in Eµ-Myc/dCas9a-SAM", "higher in B-ALL"),
-      source_level = "contextual RNA-seq differential expression",
-      source_file = source_file
-    ) |>
+# Published enriched-sgRNA tables (Supplementary Data 2): edgeR/voom, IC80
+# venetoclax vs DMSO. Only significant guides are listed, so these are hit lists.
+# Each gene key keeps its strongest guide (lowest FDR, then largest logFC);
+# enriched_symbols records mouse paralogs merged under one human key.
+tidy_deng2022_crispra <- function(root = ".") {
+  source_file <- file.path(root, "data/external/deng2022/41467_2022_32485_MOESM5_ESM.xlsx")
+  if (!file.exists(source_file)) return(tibble())
+  sheets <- c(
+    "214 Enriched sgRNAs" = "CRISPRa line #214 venetoclax IC80 (30 nM) vs DMSO | enriched sgRNAs",
+    "216 Enriched sgRNAs" = "CRISPRa line #216 venetoclax IC80 (15 nM) vs DMSO | enriched sgRNAs"
+  )
+  purrr::imap_dfr(sheets, function(experiment, sheet) {
+    readxl::read_excel(source_file, sheet = sheet) |>
+      transmute(
+        gene_symbol = normalize_gene_symbol(.data$Symbol),
+        sgrna = .data$sgRNA,
+        effect_value = coerce_number(.data$logFC),
+        p_value = coerce_number(.data$P.Value),
+        fdr = coerce_number(.data$FDR)
+      ) |>
+      filter(!is.na(.data$gene_symbol)) |>
+      mutate(gene_key = gene_key(.data$gene_symbol)) |>
+      group_by(.data$gene_key) |>
+      arrange(.data$fdr, desc(.data$effect_value), .by_group = TRUE) |>
+      mutate(
+        n_enriched_sgrna = n(),
+        enriched_symbols = paste(sort(unique(.data$gene_symbol)), collapse = "; ")
+      ) |>
+      slice(1) |>
+      ungroup() |>
+      mutate(
+        experiment = experiment,
+        effect_metric = "edgeR sgRNA logFC (strongest enriched guide)",
+        rank = rank(.data$fdr, ties.method = "first"),
+        direction = classify_direction(.data$effect_value),
+        source_level = "published enriched-sgRNA table (hit list)",
+        source_file = source_file
+      )
+  }) |>
     attach_metadata("Deng2022") |>
     complete_standard()
 }
@@ -596,7 +623,7 @@ build_gene_scores <- function(root = ".") {
     tidy_guieze2019(root),
     tidy_guieze2019_orf(root),
     tidy_glytsou2023(root),
-    tidy_deng2022(root),
+    tidy_deng2022_crispra(root),
     tidy_portelinha2024(root),
     tidy_eide2023_crispr(root),
     tidy_he2026(root),
@@ -708,10 +735,13 @@ load_detail_for_gene <- function(gene_key_value, paper, root = ".") {
       mutate(gene_symbol = gene, gene_key = gene_key(.data$gene_symbol)) |>
       filter(.data$gene_key == gene_key_value)
   } else if (paper == "Deng2022") {
-    source_file <- file.path(root, "Deng2022/tables/2022-06-29-DE_gene_list_groupEµ-Myc_dCas9a-SAM_vs_B-ALL_GGiner.csv")
+    source_file <- file.path(root, "data/external/deng2022/41467_2022_32485_MOESM5_ESM.xlsx")
     if (!file.exists(source_file)) return(missing_detail_note)
-    readr::read_csv(source_file, show_col_types = FALSE) |>
-      mutate(gene_symbol = Symbol, source_sheet = "Differential expression table", gene_key = gene_key(.data$gene_symbol)) |>
+    map_dfr(c("214 Enriched sgRNAs", "216 Enriched sgRNAs"), \(sheet) {
+      readxl::read_excel(source_file, sheet = sheet) |>
+        mutate(gene_symbol = .data$Symbol, source_sheet = paste("Supplementary Data 2", sheet))
+    }) |>
+      mutate(gene_key = gene_key(.data$gene_symbol)) |>
       filter(.data$gene_key == gene_key_value)
   } else if (paper == "He2026") {
     source_file <- file.path(root, "He2026/43018_2026_1184_MOESM2_ESM.xlsx")
