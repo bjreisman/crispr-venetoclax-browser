@@ -80,6 +80,10 @@ shiny::testServer(app_env$server, {
   stopifnot(!anyDuplicated(gene_screen_view()[c("screen_id", "gene_key")]))
   session$setInputs(screen_extra_groups = "Other BH3 mimetics")
   stopifnot("Other BH3 mimetics" %in% gene_screen_view()$screen_group)
+  for (metric in names(screen_metrics)) {
+    session$setInputs(screen_metric = metric)
+    stopifnot(nzchar(output$gene_screen_plot))
+  }
 })
 # Every screen-view registry row must match a displayed experiment, and the
 # canonical resistance genes must lead the venetoclax screens they appear in.

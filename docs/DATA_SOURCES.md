@@ -7,7 +7,7 @@ Original project code is MIT licensed. The numerical data, source publications, 
 The prepared caches are derived from public study supplements and repositories. The [source manifest](../data/metadata/source_manifest.csv) records required local paths, public source links, and input roles. The [screen inventory](../data/metadata/included_screen_inventory.csv) and [experiment mapping](../data/metadata/experiment_to_screen_mapping.csv) provide more specific evidence locators.
 
 - [Chen2019](https://pmc.ncbi.nlm.nih.gov/articles/PMC6606342/)
-- [Deng2022](https://doi.org/10.1038/s41467-022-32485-9)
+- [Deng2022](https://doi.org/10.1038/s41467-022-32485-9): CRISPRa enriched-sgRNA tables from Supplementary Data 2 ([PMC9374748](https://pmc.ncbi.nlm.nih.gov/articles/PMC9374748/))
 - [Eide2023](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE216087)
 - [Glytsou2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC10330144/)
 - [Guièze2019](https://jourdainlab.org/wp-content/uploads/2023/03/Guieze_CancerCell_2019.pdf)

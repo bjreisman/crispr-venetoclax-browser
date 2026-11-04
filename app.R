@@ -26,7 +26,7 @@ zhang_library <- external_context$zhang_library
 screen_scores <- build_screen_scores(scores)
 screen_extra_group_choices <- c(
   "Other BH3 mimetics" = "Other BH3 mimetics",
-  "ORF, priming, and expression assays" = "Other assays (direction not comparable)"
+  "CRISPRa, ORF, and BH3-priming assays" = "Other assays (direction not comparable)"
 )
 
 experiment_stats <- scores |>
@@ -115,6 +115,12 @@ ui <- page_navbar(
           ),
           conditionalPanel(
             condition = "input.gene_view_mode == 'screens'",
+            radioButtons(
+              "screen_metric",
+              "Metric",
+              choices = screen_metric_choices,
+              selected = "percentile"
+            ),
             checkboxGroupInput(
               "screen_extra_groups",
               "Also show",
@@ -151,9 +157,10 @@ ui <- page_navbar(
             tags$span(HTML("<span style='color:#2a6fb0'>&#9679;</span> FDR ≤ 0.05 or paper threshold")),
             tags$span(HTML("<span style='color:#2a6fb0'>&#9675;</span> Not significant or no statistics")),
             tags$span(HTML("<span style='color:#2a6fb0'>&#9670;</span> In published hit list")),
-            tags$span("Shaded: top or bottom 10% of the screen"),
-            tags$span("Blank: gene not measured")
+            uiOutput("gene_screen_band_note", inline = TRUE),
+            tags$span("Blank: gene not measured or no value on this metric")
           ),
+          uiOutput("gene_screen_hidden_note"),
           tags$p(
             class = "small-muted",
             "One representative result per independent screen: the latest timepoint, and for MAGeCK the selection arm matching the gene's direction. ",
@@ -395,8 +402,8 @@ ui <- page_navbar(
         tags$li("Nakao2023 uses a reproducible DrugZ re-analysis of author-supplied sgRNA counts for March5-WT venetoclax, March5-WT S63845, and March5-KO venetoclax screens. Displayed effect is DrugZ normalized Z for drug vs DMSO; positive values indicate resistance/enrichment and negative values sensitization/depletion. Direction-aware DrugZ p-values/FDRs are displayed, while MAGeCK MLE beta statistics remain audit fields in downloads. Non-targeting-control and miRNA pseudo-genes are excluded from browser rows."),
         tags$li("Zhang2024 is included as CRISPR library coverage context because the public XLSX contains guide design rather than a scored genome-screen hit table."),
         tags$li("Lin2019 significance is annotated from the paper's published threshold for the average drug-sensitivity score: Avg_sens < -0.914. The supplementary table does not include per-gene p-values or FDRs."),
-        tags$li("Deng2022 is contextual CRISPRa-associated RNA-seq differential expression, not a direct knockout screen score."),
-        tags$li("Gene matching uses normalized symbols and a small curated alias map: ADSS is grouped with ADSS2, ADSS1 with ADSSL1, and TOMM70A with TOMM70. ADSSL1 remains separate from ADSS2. No formal human-mouse ortholog mapping is applied."),
+        tags$li("Deng2022 CRISPR activation (CRISPRa) screens are the published enriched-sgRNA tables (Supplementary Data 2: IC80 venetoclax vs DMSO in mouse lymphoma lines #214 and #216), shown as gain-of-function hit lists with each gene's strongest guide. The paper's lymphoma vs B-ALL RNA-seq comparison is not included because it compares tumour types rather than measuring venetoclax response."),
+        tags$li("Gene matching uses normalized symbols and a small curated alias map: ADSS is grouped with ADSS2, ADSS1 with ADSSL1, TOMM70A with TOMM70, and mouse Bcl2a1a/b/c/d (A1) with human BCL2A1. ADSSL1 remains separate from ADSS2. No formal human-mouse ortholog mapping is applied."),
         tags$li(
           tags$strong("Guièze2019 ORF screen:"),
           " Hits are defined as genes with at least one ORF construct exceeding log₂ fold-change ≥ 2 in venetoclax vs. DMSO (replicating the paper's own threshold: ",
@@ -418,8 +425,10 @@ ui <- page_navbar(
     card(
       card_header("Changelog"),
         tags$dl(
+        tags$dt("2026-11-03 — Deng2022 CRISPRa venetoclax screens"),
+        tags$dd("Added the Deng2022 genome-wide CRISPR activation screens in mouse lymphoma lines #214 and #216 as gain-of-function hit lists from the published enriched-sgRNA tables (IC80 venetoclax vs DMSO). Mouse A1 paralogs (Bcl2a1a/b/c/d) now map to human BCL2A1, which also merges those Nakao2023 rows. The Deng2022 lymphoma vs B-ALL RNA-seq comparison was removed: it compared tumour types rather than venetoclax response, and its 6,895 FDR-significant genes inflated cross-study recurrence."),
         tags$dt("2026-11-03 — Gene Explorer screen summary view"),
-        tags$dd("The Gene Explorer now opens on one row per independent screen, grouped by venetoclax context, with one panel per gene on a shared within-screen percentile axis and a per-gene summary of top/bottom-10% screens. Other BH3 mimetics and ORF, priming, and expression assays can be added with toggles; the previous all-results plot remains available under View."),
+        tags$dd("The Gene Explorer now opens on one row per independent screen, grouped by venetoclax context, with one panel per gene on a shared within-screen percentile axis and a per-gene summary of top/bottom-10% screens. Other BH3 mimetics and CRISPRa, ORF, and BH3-priming assays can be added with toggles; the previous all-results plot remains available under View."),
         tags$dt("2026-11-03 — Effect sign, normalization, and rank fixes (v0.1.1)"),
         tags$dd(
           tags$ul(
@@ -705,6 +714,29 @@ server <- function(input, output, session) {
       )
   })
 
+  screen_metric <- reactive({
+    metric <- input$screen_metric
+    if (is.null(metric) || !metric %in% names(screen_metrics)) "percentile" else metric
+  })
+
+  output$gene_screen_band_note <- renderUI({
+    tags$span(screen_metrics[[screen_metric()]]$band_note)
+  })
+
+  output$gene_screen_hidden_note <- renderUI({
+    spec <- screen_metrics[[screen_metric()]]
+    hidden <- gene_screen_view() |>
+      filter(is.na(.data[[spec$column]]), !(spec$hit_list_column & .data$hit_list_only)) |>
+      distinct(.data$short_label) |>
+      pull(.data$short_label)
+    if (!length(hidden)) return(NULL)
+    tags$p(
+      class = "small-muted",
+      tags$strong(paste0("Not shown on this metric (no ", if (identical(screen_metric(), "signed_fdr")) "FDR" else "value", "): ")),
+      paste(hidden, collapse = "; ")
+    )
+  })
+
   output$gene_screen_summary <- renderUI({
     req(length(selected_gene_keys()) > 0)
     support <- summarise_screen_support(screen_scores, selected_gene_keys(), papers = input$gene_papers)
@@ -743,7 +775,7 @@ server <- function(input, output, session) {
   output$gene_screen_plot <- renderPlotly({
     df <- gene_screen_view()
     validate(need(nrow(df) > 0, "Search for one or more genes to populate this view."))
-    plot_screen_panels(df, gene_order = selected_gene_keys())
+    plot_screen_panels(df, gene_order = selected_gene_keys(), metric = screen_metric())
   })
 
   output$gene_effect_plot <- renderPlotly({

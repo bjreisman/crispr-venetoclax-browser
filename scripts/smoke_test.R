@@ -89,6 +89,26 @@ if (!all(scores$gene_key[scores$gene_symbol %in% c("TOMM70", "TOMM70A", "Tomm70a
   stop("TOMM70/TOMM70A aliases are not aligned.")
 }
 
+if (!all(gene_key(c("Bcl2a1a", "Bcl2a1b", "Bcl2a1c", "Bcl2a1d", "BCL2A1")) == "BCL2A1")) {
+  stop("Mouse A1 paralogs should map to human BCL2A1.")
+}
+
+deng_crispra <- scores |>
+  dplyr::filter(.data$paper == "Deng2022", grepl("^CRISPRa line #21[46] ", .data$experiment))
+
+if (dplyr::n_distinct(deng_crispra$experiment) != 2L || anyDuplicated(deng_crispra[c("experiment", "gene_key")])) {
+  stop("Deng2022 CRISPRa should contain two enriched-sgRNA hit lists with one row per gene key.")
+}
+
+deng_a1 <- deng_crispra |> dplyr::filter(.data$gene_key == "BCL2A1")
+if (nrow(deng_a1) != 2L || any(deng_a1$fdr > 0.05) || any(deng_a1$effect_value <= 0)) {
+  stop("Deng2022 CRISPRa should enrich A1 (BCL2A1) at FDR <= 0.05 in both lines.")
+}
+
+if (!all(c("BCL2L1", "MCL1") %in% deng_crispra$gene_key[grepl("#216", deng_crispra$experiment)])) {
+  stop("Deng2022 CRISPRa line #216 should enrich BCL2L1 and MCL1.")
+}
+
 orf_hits <- scores |>
   dplyr::filter(
     .data$paper == "Guièze2019",
