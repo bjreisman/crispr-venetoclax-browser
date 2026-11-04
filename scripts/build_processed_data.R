@@ -18,6 +18,17 @@ if (nakao_needs_build) {
   if (!identical(status, 0L)) stop("Nakao2023 MAGeCK/DrugZ analysis failed; browser data were not rebuilt.")
 }
 
+brimedwards_counts <- "BrimEdwards2026/GSE294240_azd4320_crispr_count.txt.gz"
+brimedwards_result <- "BrimEdwards2026/brimedwards2026_gene_results.tsv"
+if (file.exists(brimedwards_counts) &&
+    (!file.exists(brimedwards_result) || file.info(brimedwards_result)$mtime < file.info(brimedwards_counts)$mtime)) {
+  if (!requireNamespace("edgeR", quietly = TRUE)) {
+    stop("BrimEdwards2026 re-analysis needs the Bioconductor package edgeR; install it, then rerun this script.")
+  }
+  status <- system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", "scripts/build_brimedwards2026.R", "."))
+  if (!identical(status, 0L)) stop("BrimEdwards2026 edgeR re-analysis failed; browser data were not rebuilt.")
+}
+
 scores <- load_browser_data(force = TRUE)
 external_context <- write_external_context(force = TRUE)
 

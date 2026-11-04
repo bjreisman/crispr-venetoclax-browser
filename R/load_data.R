@@ -40,7 +40,7 @@ source_files <- c(
   "Guieze2019/1-s2.0-S1535610819303733-mmc3.xlsx",
   "Guieze2019/1-s2.0-S1535610819303733-mmc4.xlsx",
   "Glytsou2023/cd-22-0601_supplementary_table_s1_suppst1.xlsx",
-  "Deng2022/tables/2022-06-29-DE_gene_list_groupEµ-Myc_dCas9a-SAM_vs_B-ALL_GGiner.csv",
+  "data/external/deng2022/41467_2022_32485_MOESM5_ESM.xlsx",
   "Portelinha2024/jem_20231143_tables1.xlsx",
   "Portelinha2024/jem_20231143_tables2.xlsx",
   "data/external/eide2023/GSE216087_crispr_counts_for_geo.txt.gz",

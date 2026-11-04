@@ -7,6 +7,7 @@ library(readr)
 
 source("R/load_data.R")
 source("R/plots.R")
+source("R/screen_views.R")
 
 scores <- load_browser_data()
 depmap_crispr <- load_depmap_crispr()
@@ -21,6 +22,17 @@ beataml_expression <- external_context$beataml_expression
 beataml_gene_sets <- external_context$beataml_gene_sets
 eide_crispr_context <- external_context$eide_crispr
 zhang_library <- external_context$zhang_library
+
+screen_scores <- build_screen_scores(scores) |>
+  mutate(row_level = 0L, row_key = .data$screen_id)
+screen_detail_scores <- build_screen_scores(scores, build_screen_detail_registry(scores)) |>
+  mutate(row_level = 1L, row_key = .data$screen_id)
+expandable_papers <- sort(unique(screen_detail_scores$paper))
+screen_detail_parents <- unique(screen_detail_scores$parent_screen_id)
+screen_extra_group_choices <- c(
+  "Other BH3 mimetics" = "Other BH3 mimetics",
+  "CRISPRa, ORF, and BH3-priming assays" = "Other assays (direction not comparable)"
+)
 
 experiment_stats <- scores |>
   group_by(.data$experiment_id) |>
@@ -73,6 +85,10 @@ ui <- page_navbar(
       .baseline-panel h3 { font-size: 1.05rem; margin: 0 0 4px 0; }
       .baseline-panel .small-muted { margin-bottom: 8px; }
       .baseline-empty { color: #58656d; margin: 12px 0 0 0; }
+      .gene-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 4px 0 12px 0; }
+      .gene-summary { border: 1px solid #d9e2e7; border-radius: 8px; padding: 9px 12px; background: #fbfcfd; }
+      .gene-summary .gene { font-weight: 700; }
+      .gene-summary .detail { color: #58656d; font-size: 0.9rem; line-height: 1.4; }
       @media (max-width: 800px) { .metric-strip { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
     "))
   ),
@@ -96,24 +112,81 @@ ui <- page_navbar(
           ),
           selectInput("gene_papers", "Papers", choices = sort(unique(scores$paper)), selected = sort(unique(scores$paper)), multiple = TRUE),
           selectInput("depmap_cell_lines", "DepMap cell lines", choices = sort(unique(stats::na.omit(depmap_crispr$cell_line))), selected = sort(unique(stats::na.omit(depmap_crispr$cell_line))), multiple = TRUE),
-          selectInput(
-            "effect_axis_type",
-            "Cross-paper axis",
-            choices = c(
-              "Signed −log₁₀(FDR / p-value)" = "signed_log10",
-              "Per-experiment z-score"                      = "zscore",
-              "Raw effect value (paper units)"              = "raw"
-            ),
-            selected = "signed_log10"
+          radioButtons(
+            "gene_view_mode",
+            "View",
+            choices = c("One row per screen" = "screens", "All results" = "all"),
+            selected = "screens"
           ),
-          checkboxInput("gene_significant_only", "Show significant/annotated hits only", FALSE),
+          conditionalPanel(
+            condition = "input.gene_view_mode == 'screens'",
+            radioButtons(
+              "screen_metric",
+              "Metric",
+              choices = screen_metric_choices,
+              selected = "percentile"
+            ),
+            checkboxGroupInput(
+              "screen_extra_groups",
+              "Also show",
+              choices = screen_extra_group_choices,
+              selected = character()
+            ),
+            selectizeInput(
+              "screen_expand_papers",
+              "Expand papers",
+              choices = expandable_papers,
+              selected = character(),
+              multiple = TRUE,
+              options = list(placeholder = "Click a dot, or pick papers", plugins = list("remove_button"))
+            )
+          ),
+          conditionalPanel(
+            condition = "input.gene_view_mode == 'all'",
+            selectInput(
+              "effect_axis_type",
+              "Cross-paper axis",
+              choices = c(
+                "Signed −log₁₀(FDR / p-value)" = "signed_log10",
+                "Per-experiment z-score"                      = "zscore",
+                "Raw effect value (paper units)"              = "raw"
+              ),
+              selected = "signed_log10"
+            ),
+            checkboxInput("gene_significant_only", "Show significant/annotated hits only", FALSE)
+          ),
           downloadButton("download_gene_view", "Download view")
         )
       ),
       card(
         card_header("Cross-paper gene effects"),
-        plotlyOutput("gene_effect_plot", height = "1520px"),
-        uiOutput("gene_effect_na_note")
+        uiOutput("gene_screen_summary"),
+        conditionalPanel(
+          condition = "input.gene_view_mode == 'screens'",
+          uiOutput("gene_screen_plot_ui"),
+          tags$div(
+            class = "small-muted",
+            style = "display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 6px 0;",
+            tags$span(HTML("<span style='color:#2a6fb0'>&#9679;</span> FDR ≤ 0.05 or paper threshold")),
+            tags$span(HTML("<span style='color:#2a6fb0'>&#9675;</span> Not significant or no statistics")),
+            tags$span(HTML("<span style='color:#2a6fb0'>&#9670;</span> In published hit list")),
+            uiOutput("gene_screen_band_note", inline = TRUE),
+            tags$span("Blank: gene not measured or no value on this metric")
+          ),
+          uiOutput("gene_screen_hidden_note"),
+          tags$p(
+            class = "small-muted",
+            "One representative result per independent screen: the latest timepoint, and for MAGeCK the selection arm matching the gene's direction. ",
+            "Percentiles rank the gene among all genes in that screen. Hit-list tables are not genome-wide, so listed genes are shown without a percentile. ",
+            "Papers marked ▸ have more results (timepoints, replicates, doses, derived tables): click one of their dots, or pick them under Expand papers, to show each result as an indented row. ",
+            "Switch to All results for every arm and table in paper-native units."
+          )
+        ),
+        conditionalPanel(
+          condition = "input.gene_view_mode == 'all'",
+          plotlyOutput("gene_effect_plot", height = "1520px"),
+          uiOutput("gene_effect_na_note")
+        )
       ),
       card(
         card_header("Evidence table"),
@@ -341,10 +414,16 @@ ui <- page_navbar(
         tags$li("Eide2023 CRISPR rows are computed from public GEO sgRNA count tables: counts are scaled to the median library size, sgRNA log2 fold-changes versus DMSO are summarized as the gene median, and gene effects are centered on the experiment median (the library has no non-targeting guides); no p-value or FDR is inferred from those counts in this browser."),
         tags$li("He2026 includes the Figure 1 source-data combined MAGeCK gene table with p-values, plus separate P1-R and P2-R sgRNA RPM-derived LFC summaries without p-values/FDRs. LFC is represented as CytoC-high/CytoC-low, so negative values indicate CytoC-low enrichment/sensitizing knockout candidates such as ADSS2."),
         tags$li("Nakao2023 uses a reproducible DrugZ re-analysis of author-supplied sgRNA counts for March5-WT venetoclax, March5-WT S63845, and March5-KO venetoclax screens. Displayed effect is DrugZ normalized Z for drug vs DMSO; positive values indicate resistance/enrichment and negative values sensitization/depletion. Direction-aware DrugZ p-values/FDRs are displayed, while MAGeCK MLE beta statistics remain audit fields in downloads. Non-targeting-control and miRNA pseudo-genes are excluded from browser rows."),
+        tags$li("Wang2023 contributes two MOLM-13 venetoclax knockout screens (Brunello genome-wide, and an RNA-binding-protein domain library) as published CRISPR scores, mean sgRNA log2 fold change vs DMSO, without p-values or FDRs."),
+        tags$li("Sharon2019 is a genome-wide knockout screen in MOLM13-R1, a MOLM-13 clone with acquired venetoclax resistance, from the authors' MAGeCK workbook (days 8 to 29; the screen view uses day 29). It identifies knockouts that restore sensitivity, such as mitochondrial translation genes."),
+        tags$li("Yokoyama2026 contributes peripheral T-cell lymphoma screens (ED40515(−), DEL) under venetoclax, navitoclax, and the MCL1 inhibitor ABBV-467, as MAGeCK LFC and p-values without FDR. Excel-date-corrupted gene IDs were restored from RefSeq accessions where unambiguous."),
+        tags$li("Stewart2026 contributes OCI-AML2 screens for venetoclax, venetoclax + palbociclib, and palbociclib alone (edgeR, day 21 vs DMSO). The authors could not normalize the venetoclax and combination contrasts (raw values shifted to a median near −6; FDRs flag most genes), so the browser median-centers those two arms and does not count their FDRs as significant. The published values appear under the Raw effect (as published) and Signed −log₁₀ FDR metrics and in hover text."),
+        tags$li("BrimEdwards2026 contributes an OCI-AML2 knockout screen with the dual BCL2/BCL-XL inhibitor AZD4320, re-derived from GEO counts with the authors' edgeR pipeline because the published gene table is not in the supplement."),
+        tags$li("Diepstraten2026 contributes Partita CRISPRa venetoclax screens in DHL214 and DHL216 mouse lymphoma as hit lists: sgRNAs reaching at least 5% read frequency (the authors' Figure 3B threshold), reanalysed from GEO counts without p-values or FDRs. Many hits rest on a single replicate."),
         tags$li("Zhang2024 is included as CRISPR library coverage context because the public XLSX contains guide design rather than a scored genome-screen hit table."),
         tags$li("Lin2019 significance is annotated from the paper's published threshold for the average drug-sensitivity score: Avg_sens < -0.914. The supplementary table does not include per-gene p-values or FDRs."),
-        tags$li("Deng2022 is contextual CRISPRa-associated RNA-seq differential expression, not a direct knockout screen score."),
-        tags$li("Gene matching uses normalized symbols and a small curated alias map: ADSS is grouped with ADSS2, ADSS1 with ADSSL1, and TOMM70A with TOMM70. ADSSL1 remains separate from ADSS2. No formal human-mouse ortholog mapping is applied."),
+        tags$li("Deng2022 CRISPR activation (CRISPRa) screens are the published enriched-sgRNA tables (Supplementary Data 2: IC80 venetoclax vs DMSO in mouse lymphoma lines #214 and #216), shown as gain-of-function hit lists with each gene's strongest guide. The paper's lymphoma vs B-ALL RNA-seq comparison is not included because it compares tumour types rather than measuring venetoclax response."),
+        tags$li("Gene matching uses normalized symbols and a small curated alias map: ADSS is grouped with ADSS2, ADSS1 with ADSSL1, TOMM70A with TOMM70, and mouse Bcl2a1a/b/c/d (A1) with human BCL2A1. ADSSL1 remains separate from ADSS2. No formal human-mouse ortholog mapping is applied."),
         tags$li(
           tags$strong("Guièze2019 ORF screen:"),
           " Hits are defined as genes with at least one ORF construct exceeding log₂ fold-change ≥ 2 in venetoclax vs. DMSO (replicating the paper's own threshold: ",
@@ -366,45 +445,70 @@ ui <- page_navbar(
     card(
       card_header("Changelog"),
         tags$dl(
-        tags$dt("2026-11-03 — Effect sign, normalization, and rank fixes (v0.1.1)"),
+        tags$dt("2026-11-03"),
         tags$dd(
           tags$ul(
-            tags$li("MAGeCK negative-selection arms (Nechiporuk2019, Glytsou2023) now keep the signed gene LFC, and positive-selection arms no longer force it positive. Previously enriched resistance genes such as BAX and TP53 appeared as depleted in negative-selection arms."),
-            tags$li("Eide2023 count-derived fold-changes are now normalized to the median library size and centered on the median gene, removing a −1.3 to −3.2 log₂ depth offset."),
-            tags$li("Portelinha2024 ranks are now computed across genes; previously every gene had rank 1.")
+            tags$li(tags$strong("Expandable screens in the Gene Explorer"), " — ", "Screens with several results are marked ▸. Click one of a paper's dots, or pick it under Expand papers, to show each timepoint, replicate, dose, or derived table as an indented row; click again to collapse."),
+            tags$li(tags$strong("BrimEdwards2026 and Diepstraten2026"), " — ", "Added the BrimEdwards2026 OCI-AML2 AZD4320 knockout screen (other BH3 mimetics) and the Diepstraten2026 Partita CRISPRa venetoclax hit lists. Updated data-availability notes for nine further candidates in the additional-screens catalog."),
+            tags$li(tags$strong("Stewart2026 unnormalized arms"), " — ", "Stewart2026 venetoclax and venetoclax + palbociclib values are now median-centered, and their published FDRs no longer count as significant; this removes about 32,000 artifactual significant rows. The published values remain available under the Raw effect (as published) and Signed −log₁₀ FDR metrics."),
+            tags$li(tags$strong("Wang2023, Sharon2019, Yokoyama2026, and Stewart2026"), " — ", "Added four studies from the additional-screens catalog: Wang2023 (MOLM-13 genome-wide and RNA-binding-protein libraries), Sharon2019 (acquired-resistant MOLM13-R1), Yokoyama2026 (peripheral T-cell lymphoma; venetoclax, navitoclax, ABBV-467), and Stewart2026 (OCI-AML2 venetoclax, palbociclib, and their combination). The Gene Explorer screen view now covers 17 venetoclax screens."),
+            tags$li(tags$strong("Deng2022 CRISPRa venetoclax screens"), " — ", "Added the Deng2022 genome-wide CRISPR activation screens in mouse lymphoma lines #214 and #216 as gain-of-function hit lists from the published enriched-sgRNA tables (IC80 venetoclax vs DMSO). Mouse A1 paralogs (Bcl2a1a/b/c/d) now map to human BCL2A1, which also merges those Nakao2023 rows. The Deng2022 lymphoma vs B-ALL RNA-seq comparison was removed: it compared tumour types rather than venetoclax response, and its 6,895 FDR-significant genes inflated cross-study recurrence."),
+            tags$li(tags$strong("Gene Explorer screen summary view"), " — ", "The Gene Explorer now opens on one row per independent screen, grouped by venetoclax context, with one panel per gene on a shared within-screen percentile axis and a per-gene summary of top/bottom-10% screens. Other BH3 mimetics and CRISPRa, ORF, and BH3-priming assays can be added with toggles; the previous all-results plot remains available under View."),
+            tags$li(
+              tags$strong("Effect sign, normalization, and rank fixes (v0.1.2)"),
+              tags$ul(
+                tags$li("MAGeCK negative-selection arms (Nechiporuk2019, Glytsou2023) now keep the signed gene LFC, and positive-selection arms no longer force it positive. Previously enriched resistance genes such as BAX and TP53 appeared as depleted in negative-selection arms."),
+                tags$li("Eide2023 count-derived fold-changes are now normalized to the median library size and centered on the median gene, removing a −1.3 to −3.2 log₂ depth offset."),
+                tags$li("Portelinha2024 ranks are now computed across genes; previously every gene had rank 1.")
+              )
+            )
           )
         ),
-        tags$dt("2026-08-25 — Nakao2023 MARCH5 CRISPR screens"),
-        tags$dd("Added three mouse mMA9Cas drug-vs-DMSO screen re-analyses from published sgRNA counts. DrugZ normalized Z and directional FDR drive browser rows; MAGeCK MLE results are retained for provenance and paper-figure concordance."),
-        tags$dt("2026-07-03 — He2026 BH3-priming CRISPR screen"),
-        tags$dd("Added He2026 Figure 1 source-data combined MAGeCK gene-level LFC and p-values for the P1-R/P2-R BH3-priming screen, plus separate P1-R and P2-R sgRNA RPM-derived LFC summaries without p-values/FDRs."),
-        tags$dt("2026-05-25 — BeatAML2 gene-set sensitivity context"),
-        tags$dd("Added curated gene-set scoring to the External Context expression-vs-AUC view, allowing pathway-like RNA signatures to be compared against BeatAML2 venetoclax response."),
-        tags$dt("2026-05-25 — Lin2019 paper-threshold hits"),
-        tags$dd("Annotated Lin2019 average drug-sensitivity hits using the paper's cutoff, Avg_sens < -0.914, while keeping p-value and FDR fields blank because they are not present in the source table."),
-        tags$dt("2026-05-25 — External venetoclax sensitivity context"),
-        tags$dd("Added Eide2023 CRISPR count summaries to the core gene browser, plus an External Context tab for BeatAML2/Eide2023 ex vivo venetoclax drug response and Zhang2024 CRISPR library coverage."),
-        tags$dt("2026-05-23 — MAGeCK LFC fallback removed"),
-        tags$dd("MAGeCK experiments without a reported LFC column now omit that selection arm entirely, rather than substituting −log₁₀(p-value) as a proxy effect size. Affected: Nechiporuk2019 Y. Kosuke library day 14 negative selection arm, which the authors did not report in the supplementary table."),
-        tags$dt("2026-05-23 — Guièze2019 ORF screen documented"),
-        tags$dd("Added a data note explaining that ORF hits are defined per the paper's own threshold (any construct with LFC ≥ 2), that the library averaged ~1.3 constructs per gene, and that most genes lack multi-construct validation."),
-        tags$dt("2026-05-23 — Cross-paper axis normalization"),
+        tags$dt("2026-08-25"),
         tags$dd(
-          "Added a ", tags$em("Cross-paper axis"), " dropdown to the Gene Explorer sidebar with three options:",
           tags$ul(
-            tags$li(tags$strong("Signed −log₁₀(FDR/p-value)"), " — default; places all studies on a comparable significance scale regardless of the underlying effect metric (STARS score, MAGeCK LFC, delta CRISPR score, etc.)."),
-            tags$li(tags$strong("Per-experiment z-score"), " — normalizes each experiment to its own mean and SD across all genes."),
-            tags$li(tags$strong("Raw effect value"), " — paper-native units; scales are not directly comparable across studies.")
+            tags$li(tags$strong("Nakao2023 MARCH5 CRISPR screens"), " — ", "Added three mouse mMA9Cas drug-vs-DMSO screen re-analyses from published sgRNA counts. DrugZ normalized Z and directional FDR drive browser rows; MAGeCK MLE results are retained for provenance and paper-figure concordance.")
           )
         ),
-        tags$dt("2026-05-23 — Layout improvements"),
-        tags$dd("Baseline Dependency Context and Source Detail sections converted to collapsed accordions so the main effects plot is visible on load. Page set to scroll rather than fit content to viewport."),
-        tags$dt("2026-04-27 — Lin2019 baseline dependency context"),
-        tags$dd("Added Lin2019 essentiality three-scores as a baseline panel alongside DepMap CRISPR KO in the Gene Explorer."),
-        tags$dt("2026-04-27 — DepMap dependency plot"),
-        tags$dd("Added DepMap Public 26Q1 CRISPR gene-effect scores for MOLM-13, THP-1, and OCI-LY19 as a baseline context panel in the Gene Explorer."),
-        tags$dt("2026-04-27 — Initial release"),
-        tags$dd("Gene Explorer, Paper Explorer, Cross-study Overview, and About Data tabs covering Chen2019, Deng2022, Glytsou2023, Guièze2019, Lin2019, Nechiporuk2019, and Portelinha2024.")
+        tags$dt("2026-07-03"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("He2026 BH3-priming CRISPR screen"), " — ", "Added He2026 Figure 1 source-data combined MAGeCK gene-level LFC and p-values for the P1-R/P2-R BH3-priming screen, plus separate P1-R and P2-R sgRNA RPM-derived LFC summaries without p-values/FDRs.")
+          )
+        ),
+        tags$dt("2026-05-25"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("BeatAML2 gene-set sensitivity context"), " — ", "Added curated gene-set scoring to the External Context expression-vs-AUC view, allowing pathway-like RNA signatures to be compared against BeatAML2 venetoclax response."),
+            tags$li(tags$strong("Lin2019 paper-threshold hits"), " — ", "Annotated Lin2019 average drug-sensitivity hits using the paper's cutoff, Avg_sens < -0.914, while keeping p-value and FDR fields blank because they are not present in the source table."),
+            tags$li(tags$strong("External venetoclax sensitivity context"), " — ", "Added Eide2023 CRISPR count summaries to the core gene browser, plus an External Context tab for BeatAML2/Eide2023 ex vivo venetoclax drug response and Zhang2024 CRISPR library coverage.")
+          )
+        ),
+        tags$dt("2026-05-23"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("MAGeCK LFC fallback removed"), " — ", "MAGeCK experiments without a reported LFC column now omit that selection arm entirely, rather than substituting −log₁₀(p-value) as a proxy effect size. Affected: Nechiporuk2019 Y. Kosuke library day 14 negative selection arm, which the authors did not report in the supplementary table."),
+            tags$li(tags$strong("Guièze2019 ORF screen documented"), " — ", "Added a data note explaining that ORF hits are defined per the paper's own threshold (any construct with LFC ≥ 2), that the library averaged ~1.3 constructs per gene, and that most genes lack multi-construct validation."),
+            tags$li(
+              tags$strong("Cross-paper axis normalization"), " — ",
+              "Added a ", tags$em("Cross-paper axis"), " dropdown to the Gene Explorer sidebar with three options:",
+              tags$ul(
+                tags$li(tags$strong("Signed −log₁₀(FDR/p-value)"), " — default; places all studies on a comparable significance scale regardless of the underlying effect metric (STARS score, MAGeCK LFC, delta CRISPR score, etc.)."),
+                tags$li(tags$strong("Per-experiment z-score"), " — normalizes each experiment to its own mean and SD across all genes."),
+                tags$li(tags$strong("Raw effect value"), " — paper-native units; scales are not directly comparable across studies.")
+              )
+            ),
+            tags$li(tags$strong("Layout improvements"), " — ", "Baseline Dependency Context and Source Detail sections converted to collapsed accordions so the main effects plot is visible on load. Page set to scroll rather than fit content to viewport.")
+          )
+        ),
+        tags$dt("2026-04-27"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("Lin2019 baseline dependency context"), " — ", "Added Lin2019 essentiality three-scores as a baseline panel alongside DepMap CRISPR KO in the Gene Explorer."),
+            tags$li(tags$strong("DepMap dependency plot"), " — ", "Added DepMap Public 26Q1 CRISPR gene-effect scores for MOLM-13, THP-1, and OCI-LY19 as a baseline context panel in the Gene Explorer."),
+            tags$li(tags$strong("Initial release"), " — ", "Gene Explorer, Paper Explorer, Cross-study Overview, and About Data tabs covering Chen2019, Deng2022, Glytsou2023, Guièze2019, Lin2019, Nechiporuk2019, and Portelinha2024.")
+          )
+        )
       )
     )
   )
@@ -638,6 +742,101 @@ server <- function(input, output, session) {
     } else {
       zhang_library
     }
+  })
+
+  gene_screen_view <- reactive({
+    req(length(selected_gene_keys()) > 0)
+    groups <- c(venetoclax_screen_groups, input$screen_extra_groups)
+    bind_rows(
+      screen_scores,
+      screen_detail_scores |> filter(.data$paper %in% input$screen_expand_papers)
+    ) |>
+      filter(
+        .data$gene_key %in% selected_gene_keys(),
+        .data$paper %in% input$gene_papers,
+        .data$screen_group %in% groups
+      )
+  })
+
+  # Clicking a dot expands or collapses that paper's individual results.
+  observeEvent(event_data("plotly_click", source = "screen_panels"), {
+    paper <- event_data("plotly_click", source = "screen_panels")$customdata
+    if (is.null(paper) || !length(paper) || !paper[[1]] %in% expandable_papers) return()
+    paper <- paper[[1]]
+    current <- input$screen_expand_papers
+    expanded <- if (paper %in% current) setdiff(current, paper) else c(current, paper)
+    updateSelectizeInput(session, "screen_expand_papers", selected = expanded)
+  })
+
+  screen_metric <- reactive({
+    metric <- input$screen_metric
+    if (is.null(metric) || !metric %in% names(screen_metrics)) "percentile" else metric
+  })
+
+  output$gene_screen_band_note <- renderUI({
+    tags$span(screen_metrics[[screen_metric()]]$band_note)
+  })
+
+  output$gene_screen_hidden_note <- renderUI({
+    spec <- screen_metrics[[screen_metric()]]
+    hidden <- gene_screen_view() |>
+      filter(.data$row_level == 0, is.na(.data[[spec$column]]), !(spec$hit_list_column & .data$hit_list_only)) |>
+      distinct(.data$short_label) |>
+      pull(.data$short_label)
+    if (!length(hidden)) return(NULL)
+    tags$p(
+      class = "small-muted",
+      tags$strong(paste0("Not shown on this metric (no ", if (identical(screen_metric(), "signed_fdr")) "FDR" else "value", "): ")),
+      paste(hidden, collapse = "; ")
+    )
+  })
+
+  output$gene_screen_summary <- renderUI({
+    req(length(selected_gene_keys()) > 0)
+    support <- summarise_screen_support(screen_scores, selected_gene_keys(), papers = input$gene_papers)
+    symbols <- gene_screen_view() |>
+      group_by(.data$gene_key) |>
+      summarise(gene_display = format_gene_symbols(.data$gene_symbol), .groups = "drop")
+    support <- support |>
+      left_join(symbols, by = "gene_key") |>
+      mutate(gene_display = dplyr::coalesce(.data$gene_display, .data$gene_symbol))
+    chips <- lapply(seq_len(nrow(support)), function(i) {
+      row <- support[i, ]
+      detail <- if (row$n_tested == 0) {
+        "Not measured in the selected venetoclax screens."
+      } else if (row$n_resistance == 0 && row$n_sensitizing == 0) {
+        paste0("No top- or bottom-10% signal in ", row$n_tested, " venetoclax screens.")
+      } else {
+        parts <- c(
+          if (row$n_resistance > 0) paste0("Resistance (top 10%) in ", row$n_resistance, " of ", row$n_tested, " venetoclax screens; FDR ≤ 0.05 in ", row$n_resistance_fdr, "."),
+          if (row$n_sensitizing > 0) paste0("Sensitizing (bottom 10%) in ", row$n_sensitizing, " of ", row$n_tested, " venetoclax screens; FDR ≤ 0.05 in ", row$n_sensitizing_fdr, ".")
+        )
+        paste(parts, collapse = " ")
+      }
+      tags$div(class = "gene-summary", tags$div(class = "gene", row$gene_display), tags$div(class = "detail", detail))
+    })
+    tags$div(class = "gene-summary-grid", chips)
+  })
+
+  output$gene_screen_plot_ui <- renderUI({
+    df <- gene_screen_view()
+    if (!nrow(df)) {
+      return(tags$p(class = "baseline-empty", "The selected genes were not measured in the selected screens."))
+    }
+    plotlyOutput("gene_screen_plot", height = paste0(screen_panel_height(df, expandable_papers, input$screen_expand_papers, screen_detail_parents), "px"))
+  })
+
+  output$gene_screen_plot <- renderPlotly({
+    df <- gene_screen_view()
+    validate(need(nrow(df) > 0, "Search for one or more genes to populate this view."))
+    plot_screen_panels(
+      df,
+      gene_order = selected_gene_keys(),
+      metric = screen_metric(),
+      expandable_papers = expandable_papers,
+      expanded_papers = input$screen_expand_papers,
+      screen_detail_parents = screen_detail_parents
+    )
   })
 
   output$gene_effect_plot <- renderPlotly({

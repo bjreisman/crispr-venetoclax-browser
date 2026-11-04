@@ -10,8 +10,6 @@ effect_color_values <- c(
   "ORF overexpression depleted" = "#247a6b",
   "higher score" = "#7a5c1f",
   "lower score" = "#326b9a",
-  "higher in Eµ-Myc/dCas9a-SAM" = "#8a4f9e",
-  "higher in B-ALL" = "#4b7f9f",
   "neutral" = "#767676",
   "unknown" = "#9a9a9a"
 )
@@ -432,4 +430,151 @@ plot_external_crispr_rank <- function(df, top_n = 20) {
 
   ggplotly(p, tooltip = "text") |>
     layout(legend = list(orientation = "h", y = -0.18))
+}
+
+# Row layout for the screen view: a header per group, one row per screen, and
+# (for expanded papers) that screen's individual results underneath.
+# Returns keys (unique row ids) and display labels in top-to-bottom order.
+screen_panel_rows <- function(df, expandable_papers = character(), expanded_papers = character(),
+                              screen_detail_parents = character()) {
+  reps <- screen_view_registry |>
+    distinct(.data$screen_id, .data$paper, .data$screen_group, .data$short_label)
+  children <- df |>
+    filter(.data$row_level == 1) |>
+    distinct(.data$row_key, .data$parent_screen_id, .data$short_label, .data$detail_order)
+  shown <- union(df$row_key[df$row_level == 0], children$parent_screen_id)
+  groups <- screen_view_groups[screen_view_groups %in% reps$screen_group[reps$screen_id %in% shown]]
+  rows <- lapply(groups, function(group) {
+    screens <- reps |> filter(.data$screen_group == group, .data$screen_id %in% shown)
+    screen_rows <- lapply(seq_len(nrow(screens)), function(i) {
+      sc <- screens[i, ]
+      has_children <- sc$screen_id %in% screen_detail_parents
+      marker <- if (has_children && sc$paper %in% expanded_papers) "▾ " else if (has_children && sc$paper %in% expandable_papers) "▸ " else ""
+      kids <- children |> filter(.data$parent_screen_id == sc$screen_id) |> arrange(.data$detail_order)
+      tibble(
+        key = c(sc$screen_id, kids$row_key),
+        label = c(paste0(marker, sc$short_label), if (nrow(kids)) paste0("<span style='color:#6b7780'>", kids$short_label, "</span>"))
+      )
+    })
+    bind_rows(tibble(key = paste0("header :: ", group), label = paste0("<b>", group, "</b>")), screen_rows)
+  })
+  bind_rows(rows)
+}
+
+screen_panel_height <- function(df, ...) {
+  n_genes <- dplyr::n_distinct(df$gene_key)
+  n_rows <- nrow(screen_panel_rows(df, ...))
+  panel_rows <- ceiling(n_genes / 4)
+  max(360, 110 + panel_rows * (22 * n_rows + 40))
+}
+
+plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "percentile",
+                               expandable_papers = character(), expanded_papers = character(),
+                               screen_detail_parents = character()) {
+  spec <- screen_metrics[[metric]]
+  df <- df |>
+    mutate(value = .data[[spec$column]]) |>
+    filter(!is.na(.data$value) | (spec$hit_list_column & .data$hit_list_only))
+  if (!nrow(df)) return(plotly_empty(type = "scatter", mode = "markers"))
+
+  rows <- screen_panel_rows(df, expandable_papers, expanded_papers, screen_detail_parents)
+  y_levels <- rows$key
+  finite_values <- df$value[is.finite(df$value)]
+  value_range <- range(c(0, finite_values, if (is.finite(spec$band)) c(-spec$band, spec$band)))
+  if (identical(metric, "percentile")) value_range <- c(-1, 1)
+  span <- diff(value_range)
+  hit_list_x <- value_range[2] + 0.17 * span
+  show_hit_list <- spec$hit_list_column && any(df$hit_list_only)
+  x_limits <- c(value_range[1] - 0.04 * span, if (show_hit_list) hit_list_x + 0.06 * span else value_range[2] + 0.04 * span)
+
+  plot_df <- df |>
+    group_by(.data$gene_key) |>
+    mutate(gene_display = format_gene_symbols(.data$gene_symbol)) |>
+    ungroup() |>
+    mutate(
+      x = dplyr::if_else(spec$hit_list_column & .data$hit_list_only, hit_list_x, .data$value),
+      marker = dplyr::case_when(
+        spec$hit_list_column & .data$hit_list_only ~ "In published hit list",
+        .data$supported ~ "FDR ≤ 0.05 or paper threshold",
+        TRUE ~ "Not significant or no statistics"
+      ),
+      y = factor(.data$row_key, levels = rev(y_levels)),
+      label = paste0(
+        .data$gene_display, " · ", .data$short_label,
+        dplyr::if_else(.data$paper %in% expandable_papers,
+          dplyr::if_else(.data$paper %in% expanded_papers, "<br><i>Click to collapse this paper's results</i>", "<br><i>Click to show this paper's timepoints, replicates, and doses</i>"),
+          ""
+        ),
+        "<br>", .data$paper, " — ", .data$experiment,
+        dplyr::if_else(
+          .data$hit_list_only,
+          "<br>Listed in a published hit table (not genome-wide; no percentile or z-score)",
+          paste0(
+            "<br>Within-screen percentile: ", sprintf("%+.2f", .data$percentile), " of ", format(.data$screen_genes, big.mark = ","), " genes",
+            "<br>Robust z-score: ", sprintf("%+.1f", .data$robust_z)
+          )
+        ),
+        "<br>", .data$effect_metric, ": ", signif(.data$effect_value, 3),
+        "<br>FDR: ", dplyr::case_when(
+          is.na(.data$fdr) ~ "not reported",
+          .data$fdr <= 0 ~ "reported as 0",
+          TRUE ~ as.character(signif(.data$fdr, 3))
+        ),
+        dplyr::if_else(
+          is.na(.data$fdr) & !is.na(.data$published_fdr) | .data$published_effect != .data$effect_value,
+          paste0(
+            "<br>As published: ", signif(.data$published_effect, 3),
+            ", FDR ", signif(.data$published_fdr, 3), " (unnormalized; not counted as significant)"
+          ),
+          ""
+        ),
+        "<br>", .data$significance
+      )
+    )
+  plot_df$gene_display <- factor(plot_df$gene_display, levels = unique(plot_df$gene_display[order(match(plot_df$gene_key, gene_order))]))
+
+  marker_shapes <- c(
+    "FDR ≤ 0.05 or paper threshold" = 16,
+    "Not significant or no statistics" = 1,
+    "In published hit list" = 18
+  )
+
+  breaks <- if (identical(metric, "percentile")) c(-1, 0, 1) else pretty(value_range, n = 4)
+  breaks <- breaks[breaks >= value_range[1] & breaks <= value_range[2]]
+  break_labels <- sub("^-", "−", format(breaks, trim = TRUE))
+  if (identical(metric, "percentile")) break_labels <- c("−1", "0", "+1")
+  if (show_hit_list) {
+    breaks <- c(breaks, hit_list_x)
+    break_labels <- c(break_labels, "hit list")
+  }
+
+  p <- ggplot(plot_df, aes(x = x, y = y, shape = marker, text = label, customdata = paper))
+  if (is.finite(spec$band)) {
+    p <- p +
+      annotate("rect", xmin = spec$band, xmax = value_range[2] + 0.02 * span, ymin = 0.5, ymax = length(y_levels) + 0.5, fill = "#b73e3e", alpha = 0.1) +
+      annotate("rect", xmin = value_range[1] - 0.02 * span, xmax = -spec$band, ymin = 0.5, ymax = length(y_levels) + 0.5, fill = "#247a6b", alpha = 0.1)
+  }
+  p <- p +
+    geom_vline(xintercept = 0, color = "#b9b9b9", linewidth = 0.35) +
+    geom_point(data = dplyr::filter(plot_df, .data$row_level == 0), size = 3, color = "#2a6fb0", stroke = 1) +
+    geom_point(data = dplyr::filter(plot_df, .data$row_level == 1), size = 2.2, color = "#86a9cf", stroke = 0.8) +
+    scale_shape_manual(values = marker_shapes, name = NULL, drop = FALSE) +
+    scale_y_discrete(limits = rev(y_levels), labels = stats::setNames(rows$label, rows$key), drop = FALSE) +
+    scale_x_continuous(limits = x_limits, breaks = breaks, labels = break_labels) +
+    facet_wrap(~gene_display, ncol = min(4, dplyr::n_distinct(plot_df$gene_key))) +
+    labs(x = spec$axis, y = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major.y = element_line(color = "#f0f0ee", linewidth = 0.3),
+      panel.border = element_rect(color = "#aab4bb", fill = NA, linewidth = 0.6),
+      panel.spacing.x = grid::unit(14, "pt"),
+      strip.text = element_text(face = "bold", size = 12),
+      legend.position = "bottom",
+      axis.text.y = element_text(size = 10.5)
+    )
+
+  ggplotly(p, tooltip = "text", source = "screen_panels") |>
+    layout(showlegend = FALSE, margin = list(t = 50, b = 60)) |>
+    event_register("plotly_click")
 }

@@ -16,7 +16,7 @@ for (i in seq_len(nrow(cache_manifest))) {
 
 scores <- load_browser_data()
 stopifnot(all(standard_columns %in% names(scores)), nrow(scores) > 0L)
-stopifnot(dplyr::n_distinct(scores$paper) == 10L)
+stopifnot(dplyr::n_distinct(scores$paper) == 16L)
 stopifnot(all(c("BAX", "TP53", "PMAIP1") %in% scores$gene_key))
 depmap <- load_depmap_crispr()
 stopifnot(nrow(depmap) > 0L, all(c("MOLM-13", "THP-1", "OCI-LY-19") %in% depmap$cell_line))
@@ -75,7 +75,32 @@ shiny::testServer(app_env$server, {
   stopifnot(nrow(gene_view()) > 0L, all(gene_view()$gene_key %in% c("BAX", "TP53")))
   stopifnot(nrow(gene_effect_display()) > 0L, nrow(depmap_view()) > 0L)
   stopifnot(nrow(overview_hits()) > 0L, nrow(expression_auc_view()) > 0L)
+  session$setInputs(gene_view_mode = "screens", screen_extra_groups = character())
+  stopifnot(nrow(gene_screen_view()) > 0L, all(gene_screen_view()$screen_group %in% venetoclax_screen_groups))
+  stopifnot(!anyDuplicated(gene_screen_view()[c("screen_id", "gene_key")]))
+  session$setInputs(screen_extra_groups = "Other BH3 mimetics")
+  stopifnot("Other BH3 mimetics" %in% gene_screen_view()$screen_group)
+  for (metric in names(screen_metrics)) {
+    session$setInputs(screen_metric = metric)
+    stopifnot(nzchar(output$gene_screen_plot))
+  }
+  # Expanding a paper adds its timepoints/replicates as uniquely keyed rows.
+  collapsed_rows <- nrow(gene_screen_view())
+  session$setInputs(screen_metric = "percentile", screen_expand_papers = c("Sharon2019", "Chen2019", "Guièze2019"))
+  expanded <- gene_screen_view()
+  stopifnot(nrow(expanded) > collapsed_rows, any(expanded$row_level == 1L))
+  stopifnot(all(c("↳ day 8", "↳ day 29") %in% expanded$short_label[expanded$paper == "Sharon2019"]))
+  stopifnot(!anyDuplicated(screen_panel_rows(expanded, app_env$expandable_papers, input$screen_expand_papers, app_env$screen_detail_parents)$key))
+  stopifnot(nzchar(output$gene_screen_plot))
 })
+# Every screen-view registry row must match a displayed experiment, and the
+# canonical resistance genes must lead the venetoclax screens they appear in.
+stopifnot(nrow(dplyr::anti_join(screen_view_registry, dplyr::distinct(scores, paper, experiment), by = c("paper", "experiment"))) == 0L)
+screen_support <- summarise_screen_support(app_env$screen_scores, c("BAX", "PMAIP1"))
+stopifnot(all(screen_support$n_resistance >= 8L), all(screen_support$n_sensitizing == 0L))
+mcl1_support <- summarise_screen_support(app_env$screen_scores, "BCL2L1")
+stopifnot(mcl1_support$n_sensitizing >= 3L, mcl1_support$n_sensitizing > mcl1_support$n_resistance)
+
 lock <- jsonlite::read_json("renv.lock", simplifyVector = FALSE)
 missing <- names(lock$Packages)[!vapply(names(lock$Packages), requireNamespace, logical(1), quietly = TRUE)]
 stopifnot(length(missing) == 0L)
