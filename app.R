@@ -404,6 +404,8 @@ ui <- page_navbar(
         tags$li("Sharon2019 is a genome-wide knockout screen in MOLM13-R1, a MOLM-13 clone with acquired venetoclax resistance, from the authors' MAGeCK workbook (days 8 to 29; the screen view uses day 29). It identifies knockouts that restore sensitivity, such as mitochondrial translation genes."),
         tags$li("Yokoyama2026 contributes peripheral T-cell lymphoma screens (ED40515(−), DEL) under venetoclax, navitoclax, and the MCL1 inhibitor ABBV-467, as MAGeCK LFC and p-values without FDR. Excel-date-corrupted gene IDs were restored from RefSeq accessions where unambiguous."),
         tags$li("Stewart2026 contributes OCI-AML2 screens for venetoclax, venetoclax + palbociclib, and palbociclib alone (edgeR, day 21 vs DMSO). The authors could not normalize the venetoclax and combination contrasts (raw values shifted to a median near −6; FDRs flag most genes), so the browser median-centers those two arms and does not count their FDRs as significant. The published values appear under the Raw effect (as published) and Signed −log₁₀ FDR metrics and in hover text."),
+        tags$li("BrimEdwards2026 contributes an OCI-AML2 knockout screen with the dual BCL2/BCL-XL inhibitor AZD4320, re-derived from GEO counts with the authors' edgeR pipeline because the published gene table is not in the supplement."),
+        tags$li("Diepstraten2026 contributes Partita CRISPRa venetoclax screens in DHL214 and DHL216 mouse lymphoma as hit lists: sgRNAs reaching at least 5% read frequency (the authors' Figure 3B threshold), reanalysed from GEO counts without p-values or FDRs. Many hits rest on a single replicate."),
         tags$li("Zhang2024 is included as CRISPR library coverage context because the public XLSX contains guide design rather than a scored genome-screen hit table."),
         tags$li("Lin2019 significance is annotated from the paper's published threshold for the average drug-sensitivity score: Avg_sens < -0.914. The supplementary table does not include per-gene p-values or FDRs."),
         tags$li("Deng2022 CRISPR activation (CRISPRa) screens are the published enriched-sgRNA tables (Supplementary Data 2: IC80 venetoclax vs DMSO in mouse lymphoma lines #214 and #216), shown as gain-of-function hit lists with each gene's strongest guide. The paper's lymphoma vs B-ALL RNA-seq comparison is not included because it compares tumour types rather than measuring venetoclax response."),
@@ -429,6 +431,8 @@ ui <- page_navbar(
     card(
       card_header("Changelog"),
         tags$dl(
+        tags$dt("2026-11-03 — BrimEdwards2026 and Diepstraten2026"),
+        tags$dd("Added the BrimEdwards2026 OCI-AML2 AZD4320 knockout screen (other BH3 mimetics) and the Diepstraten2026 Partita CRISPRa venetoclax hit lists. Updated data-availability notes for nine further candidates in the additional-screens catalog."),
         tags$dt("2026-11-03 — Stewart2026 unnormalized arms"),
         tags$dd("Stewart2026 venetoclax and venetoclax + palbociclib values are now median-centered, and their published FDRs no longer count as significant; this removes about 32,000 artifactual significant rows. The published values remain available under the Raw effect (as published) and Signed −log₁₀ FDR metrics."),
         tags$dt("2026-11-03 — Wang2023, Sharon2019, Yokoyama2026, and Stewart2026"),

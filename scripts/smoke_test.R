@@ -340,6 +340,55 @@ if (length(combo_bax) != 1 || combo_bax >= ven_resist[["BAX"]] - 4 ||
   stop("Stewart2026: BAX enrichment should be lost under venetoclax+palbociclib and RB1 should be enriched under palbociclib.")
 }
 
+# Diepstraten2026 (Partita CRISPRa, mouse DHL lymphoma, venetoclax hit lists).
+diepstraten <- scores |> filter(paper == "Diepstraten2026")
+stopifnot(nrow(diepstraten) > 0)
+
+# Four hit lists: two lines x two doses; all rows are enriched (positive) only.
+stopifnot(dplyr::n_distinct(diepstraten$experiment) == 4)
+stopifnot(all(diepstraten$effect_value > 0))
+stopifnot(all(diepstraten$direction == "resistance/enriched"))
+
+# No invented significance: the venetoclax screen was not statistically tested.
+stopifnot(all(is.na(diepstraten$p_value)), all(is.na(diepstraten$fdr)))
+
+# Prosurvival BCL-2 family activation is enriched, as reported in the paper.
+stopifnot("BCL2L1" %in% diepstraten$gene_key, "MCL1" %in% diepstraten$gene_key)
+stopifnot(any(diepstraten$gene_key == "BCL2"))
+
+# Mouse symbols are mapped to human keys and one row per gene per experiment.
+stopifnot(!any(duplicated(diepstraten[c("experiment", "gene_key")])))
+
+brimedwards <- scores |> dplyr::filter(.data$paper == "BrimEdwards2026")
+if (!identical(unique(brimedwards$experiment), "OCI-AML2 Yusa library day 14 AZD4320 30 nM vs DMSO") ||
+    nrow(brimedwards) < 17000 || anyDuplicated(brimedwards$gene_key)) {
+  stop("BrimEdwards2026 should contain one genome-wide (>17,000 gene) AZD4320-vs-DMSO experiment with one row per gene.")
+}
+
+brimedwards_effect <- function(genes, column = "effect_value") {
+  brimedwards |>
+    dplyr::filter(.data$gene_key %in% gene_key(genes)) |>
+    dplyr::pull(dplyr::all_of(column), name = .data$gene_key)
+}
+be_resist <- brimedwards_effect(c("BAX", "PMAIP1", "TP53", "RBM15", "ZMYND8"))
+be_resist_fdr <- brimedwards_effect(c("BAX", "PMAIP1", "TP53", "RBM15", "ZMYND8"), "fdr")
+be_bcl2l1 <- brimedwards_effect("BCL2L1")
+if (length(be_resist) != 5 || any(be_resist <= 2) || any(be_resist_fdr > 0.05) ||
+    length(be_bcl2l1) != 1 || be_bcl2l1 >= -1) {
+  stop("BrimEdwards2026 AZD4320 screen should enrich BAX/PMAIP1/TP53/RBM15/ZMYND8 (FDR <= 0.05) and deplete BCL2L1.")
+}
+
+# Figure 2A labels nine Tier1 genes; the re-derived tiers should recover them.
+be_tier1 <- sort(brimedwards$gene_key[brimedwards$tier %in% "Tier1"])
+if (!identical(be_tier1, sort(gene_key(c("BAX", "PMAIP1", "TP53", "RBM15", "ZMYND8", "LETM2", "MRPL16", "ATL2", "PCGF1"))))) {
+  stop("BrimEdwards2026 Tier1 genes should match the nine labeled in Figure 2A.")
+}
+
+if (any(brimedwards$p_value < 0 | brimedwards$p_value > 1 | brimedwards$fdr < brimedwards$p_value, na.rm = TRUE) ||
+    mean(brimedwards$fdr <= 0.05, na.rm = TRUE) > 0.05) {
+  stop("BrimEdwards2026 p-values/FDRs should be valid and flag only a small minority of genes.")
+}
+
 if (!nrow(depmap_crispr)) {
   stop("DepMap CRISPR data are missing. Run scripts/build_depmap_data.R.")
 }

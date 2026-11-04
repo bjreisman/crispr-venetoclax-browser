@@ -8,6 +8,8 @@ The prepared caches are derived from public study supplements and repositories. 
 
 - [Chen2019](https://pmc.ncbi.nlm.nih.gov/articles/PMC6606342/)
 - [Deng2022](https://doi.org/10.1038/s41467-022-32485-9): CRISPRa enriched-sgRNA tables from Supplementary Data 2 ([PMC9374748](https://pmc.ncbi.nlm.nih.gov/articles/PMC9374748/))
+- [BrimEdwards2026](https://doi.org/10.3324/haematol.2025.287972): counts in [GSE294240](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE294240), re-analysed with the authors' edgeR pipeline
+- [Diepstraten2026](https://doi.org/10.1126/sciadv.aec0722): counts in [GSE296642](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE296642), re-analysed as hit lists
 - [Eide2023](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE216087)
 - [Glytsou2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC10330144/)
 - [Guièze2019](https://jourdainlab.org/wp-content/uploads/2023/03/Guieze_CancerCell_2019.pdf)

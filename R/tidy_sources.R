@@ -41,7 +41,11 @@ paper_metadata <- tibble::tribble(
   "Yokoyama2026", 2026, "Genome-wide CRISPR/Cas9 loss-of-function screens", "Peripheral T-cell lymphoma lines ED40515(-) and DEL; venetoclax, navitoclax and ABBV-467", "Human",
   "Genome-wide knockout screens in two PTCL lines under venetoclax, navitoclax (BCL2/BCL-XL) and the MCL1 inhibitor ABBV-467, nominating MYLIP loss (via LDLR and cholesterol uptake) and the upstream RXRA/RXRB receptors as BH3-mimetic sensitizers. Browser rows are the published MAGeCK gene summaries (drug vs DMSO); the table gives p-values but no FDRs.",
   "Stewart2026", 2026, "Genome-wide CRISPR/Cas9 loss-of-function screens", "OCI-AML2 AML; venetoclax, palbociclib, and venetoclax+palbociclib", "Human",
-  "OCI-AML2 Yusa-library knockout screens (day 21 vs DMSO) showing that loss of translation genes sensitizes to venetoclax but not venetoclax+palbociclib, and that the combination overcomes BAX-loss (venetoclax) and RB1-loss (palbociclib) resistance. Venetoclax and combination contrasts were not count-normalized by the authors, so raw LFCs are shifted negative; compare within-screen percentiles."
+  "OCI-AML2 Yusa-library knockout screens (day 21 vs DMSO) showing that loss of translation genes sensitizes to venetoclax but not venetoclax+palbociclib, and that the combination overcomes BAX-loss (venetoclax) and RB1-loss (palbociclib) resistance. Venetoclax and combination contrasts were not count-normalized by the authors, so raw LFCs are shifted negative; compare within-screen percentiles.",
+  "Diepstraten2026", 2026, "Genome-wide CRISPR activation (CRISPRa) screens, Partita high-density library", "Eµ-Myc/dCas9a-SAM/sgBcl2 mouse lymphoma lines DHL214 and DHL216; venetoclax IC50/IC80", "Mouse",
+  "High-density Partita mouse CRISPRa library (10 sgRNAs per TSS, five sublibraries) screened in DHL214/DHL216 lymphoma under venetoclax. Enriched sgRNAs targeted Bcl2, Bcl2l1 and Mcl1, and validation nominated Irx5 (via BCL-XL induction), Rac1, Trip6 and Dock8 as resistance factors. Selection was heavily bottlenecked, so browser rows are a hit-list reanalysis of the GEO counts (sgRNAs at >=5% read frequency, the authors' Fig. 3B threshold); no p-values or FDRs.",
+  "BrimEdwards2026", 2026, "Genome-wide CRISPR/Cas9 loss-of-function screen", "OCI-AML2 AML; AZD4320 (dual BCL2/BCL-XL inhibitor)", "Human",
+  "OCI-AML2 Yusa-library knockout screen (AZD4320 30 nM vs DMSO, day 14) showing that loss of the m6A writer adaptor RBM15 or the NuRD interactor ZMYND8 confers resistance to AZD4320 and venetoclax, alongside BAX, PMAIP1 and TP53. Browser scores re-derive the authors' edgeR median-p sgRNA summaries from the GEO counts because the gene-level table was not published; the paper's venetoclax comparison uses an earlier OCI-AML2 screen, not a new one."
 )
 
 normalize_gene_symbol <- function(x) {
@@ -662,6 +666,162 @@ tidy_stewart2026 <- function(root = ".") {
     complete_standard()
 }
 
+# Diepstraten2026 (Sci Adv 2026; doi 10.1126/sciadv.aec0722; PMC13588164).
+# Partita mouse CRISPRa library (10 sgRNAs per TSS, five sublibraries each
+# transduced separately) in Eu-Myc/dCas9a-SAM/sgBcl2 DHL214 and DHL216 lymphoma
+# lines; venetoclax IC50 or IC80 vs DMSO, 2-3 replicates per sublibrary.
+# Source: GEO GSE296642_DHL_Partita1-5_ven_counts.xlsx (raw sgRNA counts).
+# The authors ran no statistical test for the venetoclax screen; they plotted
+# per-sample sgRNA proportions and labelled sgRNAs with frequency >= 5%
+# (Fig. 3B legend). Post-selection samples are severely bottlenecked
+# (DMSO 0.3-5% of sgRNAs detected, venetoclax 0.1-1%; top 10 sgRNAs hold
+# 68-100% of venetoclax reads), so no genome-wide gene score is computed.
+# This is a hit-list REANALYSIS of the counts: an sgRNA is a hit when it
+# reaches >= 5% of reads in at least one venetoclax replicate (authors'
+# threshold) and its mean CPM is higher under venetoclax than DMSO.
+# Sublibraries are pooled within a line x dose (library parts are not separate
+# screens). Each gene key keeps its strongest sgRNA (highest venetoclax
+# frequency); `enriched_symbols` records merged paralogs. Sign: positive =
+# activating the gene enriched under venetoclax (resistance). No p/FDR.
+tidy_diepstraten2026 <- function(root = ".") {
+  source_file <- file.path(root, "Diepstraten2026/GSE296642_DHL_Partita1-5_ven_counts.xlsx")
+  if (!file.exists(source_file)) return(tibble())
+  hit_frequency <- 0.05
+  experiments <- c(
+    "214_IC50" = "CRISPRa Partita DHL214 venetoclax IC50 (10 nM) vs DMSO | sgRNAs >=5% frequency (hit list)",
+    "214_IC80" = "CRISPRa Partita DHL214 venetoclax IC80 (30 nM) vs DMSO | sgRNAs >=5% frequency (hit list)",
+    "216_IC50" = "CRISPRa Partita DHL216 venetoclax IC50 (5 nM) vs DMSO | sgRNAs >=5% frequency (hit list)",
+    "216_IC80" = "CRISPRa Partita DHL216 venetoclax IC80 (15 nM) vs DMSO | sgRNAs >=5% frequency (hit list)"
+  )
+  counts <- purrr::map_dfr(readxl::excel_sheets(source_file), function(sheet) {
+    d <- readxl::read_excel(source_file, sheet = sheet)
+    names(d)[tolower(names(d)) == "gene"] <- "gene"
+    d |>
+      select(-any_of("water")) |>
+      tidyr::pivot_longer(-c("sgRNA", "gene"), names_to = "sample", values_to = "count") |>
+      mutate(sublibrary = sheet)
+  }) |>
+    mutate(
+      count = dplyr::coalesce(as.numeric(.data$count), 0),
+      line = stringr::str_extract(.data$sample, "^\\d{3}"),
+      condition = stringr::str_match(.data$sample, "^\\d{3}_(.*)_Lib")[, 2] |>
+        stringr::str_remove("^s_") |>
+        stringr::str_to_upper()
+    ) |>
+    filter(.data$condition %in% c("DMSO", "IC50", "IC80")) |>
+    group_by(.data$sample, .data$sublibrary) |>
+    mutate(cpm = .data$count / sum(.data$count) * 1e6) |>
+    ungroup()
+
+  dmso <- counts |>
+    filter(.data$condition == "DMSO") |>
+    group_by(.data$sublibrary, .data$line, .data$sgRNA) |>
+    summarise(dmso_cpm = mean(.data$cpm), .groups = "drop")
+
+  counts |>
+    filter(.data$condition != "DMSO") |>
+    group_by(.data$sublibrary, .data$line, .data$condition, .data$sgRNA, .data$gene) |>
+    summarise(
+      ven_cpm = mean(.data$cpm),
+      max_sgrna_frequency = max(.data$cpm) / 1e6,
+      n_replicates_ge5pct = sum(.data$cpm / 1e6 >= hit_frequency),
+      n_replicates = n(),
+      .groups = "drop"
+    ) |>
+    left_join(dmso, by = c("sublibrary", "line", "sgRNA")) |>
+    mutate(effect_value = log2((.data$ven_cpm + 1) / (.data$dmso_cpm + 1))) |>
+    filter(
+      .data$max_sgrna_frequency >= hit_frequency,
+      .data$effect_value > 0,
+      !grepl("^(NTC|Non|non)", .data$gene)
+    ) |>
+    mutate(
+      gene_symbol = normalize_gene_symbol(.data$gene),
+      gene_key = gene_key(.data$gene_symbol),
+      experiment = unname(experiments[paste(.data$line, .data$condition, sep = "_")])
+    ) |>
+    group_by(.data$experiment, .data$gene_key) |>
+    arrange(desc(.data$max_sgrna_frequency), .by_group = TRUE) |>
+    mutate(
+      n_enriched_sgrna = n(),
+      enriched_symbols = paste(sort(unique(.data$gene_symbol)), collapse = "; ")
+    ) |>
+    slice(1) |>
+    group_by(.data$experiment) |>
+    mutate(rank = rank(-.data$max_sgrna_frequency, ties.method = "first")) |>
+    ungroup() |>
+    transmute(
+      experiment = .data$experiment,
+      gene_symbol = .data$gene_symbol,
+      gene_key = .data$gene_key,
+      effect_metric = "log2((mean venetoclax CPM + 1) / (mean DMSO CPM + 1)), strongest sgRNA reaching >=5% read frequency (reanalysis of GEO counts)",
+      effect_value = .data$effect_value,
+      p_value = NA_real_,
+      fdr = NA_real_,
+      rank = .data$rank,
+      direction = classify_direction(.data$effect_value),
+      source_level = "reanalysed sgRNA counts; authors' >=5% frequency threshold (hit list)",
+      source_file = source_file,
+      sgrna = .data$sgRNA,
+      sublibrary = .data$sublibrary,
+      max_sgrna_frequency = .data$max_sgrna_frequency,
+      n_replicates_ge5pct = .data$n_replicates_ge5pct,
+      n_replicates = .data$n_replicates,
+      n_enriched_sgrna = .data$n_enriched_sgrna,
+      enriched_symbols = .data$enriched_symbols
+    ) |>
+    attach_metadata("Diepstraten2026") |>
+    complete_standard()
+}
+
+# OCI-AML2 Yusa v1 knockout screen, AZD4320 30 nM vs DMSO for 14 days
+# (GSE294240). The paper's gene-level table (Supplemental Data 1, "CRISPR
+# Screen Results.xlsx") is not in the published supplement, so gene results are
+# re-derived from the GEO sgRNA counts by scripts/build_brimedwards2026.R, which
+# follows the authors' edgeR pipeline (plasmid and CPM filters, TMM, guide
+# exactTest, median-p sgRNA per gene, concordance tiers). effect_value is that
+# guide's log2 fold-change (mid_lfc), as in the Figure 2A volcano; positive =
+# enriched under AZD4320 = knockout confers resistance. p_value/fdr are the
+# median guide's p-value and BH FDR, as in the Stewart2026 gene tabs. The
+# GEO series has no venetoclax arm; the paper's venetoclax comparison uses an
+# earlier OCI-AML2 screen that is not part of this deposit.
+tidy_brimedwards2026 <- function(root = ".") {
+  source_file <- file.path(root, "BrimEdwards2026/GSE294240_azd4320_crispr_count.txt.gz")
+  result_file <- file.path(root, "BrimEdwards2026/brimedwards2026_gene_results.tsv")
+  if (!file.exists(source_file)) return(tibble())
+  if (!file.exists(result_file) || file.info(result_file)$mtime < file.info(source_file)$mtime) {
+    stop("BrimEdwards2026 derived results are missing or older than the GEO counts. Run Rscript --vanilla scripts/build_brimedwards2026.R . (requires edgeR) before rebuilding browser data.")
+  }
+
+  readr::read_tsv(result_file, show_col_types = FALSE) |>
+    transmute(
+      gene_symbol = normalize_gene_symbol(.data$Gene),
+      experiment = "OCI-AML2 Yusa library day 14 AZD4320 30 nM vs DMSO",
+      effect_metric = "edgeR median-p sgRNA log2 fold-change (mid_lfc), re-derived from GEO counts",
+      effect_value = coerce_number(.data$mid_lfc),
+      p_value = coerce_number(.data$mid_pval),
+      fdr = coerce_number(.data$mid_fdr),
+      n_sgrna = coerce_number(.data$total),
+      n_sgrna_tested = coerce_number(.data$not_filtered),
+      n_sgrna_significant = coerce_number(.data$num_sig),
+      n_sgrna_up = coerce_number(.data$num_up),
+      n_sgrna_down = coerce_number(.data$num_down),
+      sgrna_lfc_mean = coerce_number(.data$lfc_mean),
+      sgrna_min_fdr = coerce_number(.data$min_fdr),
+      tier = .data$tiers
+    ) |>
+    # Genes with no sgRNA passing the filters have no score.
+    filter(!is.na(.data$effect_value)) |>
+    mutate(
+      rank = rank(.data$p_value, ties.method = "first", na.last = "keep"),
+      direction = classify_direction(.data$effect_value),
+      source_level = "re-analyzed gene summary from published sgRNA counts",
+      source_file = source_file
+    ) |>
+    attach_metadata("BrimEdwards2026") |>
+    complete_standard()
+}
+
 tidy_eide2023_crispr <- function(root = ".") {
   source_file <- file.path(root, "data/external/eide2023/GSE216087_crispr_counts_for_geo.txt.gz")
   if (!file.exists(source_file)) return(tibble())
@@ -909,7 +1069,9 @@ build_gene_scores <- function(root = ".") {
     tidy_wang2023(root),
     tidy_sharon2019(root),
     tidy_yokoyama2026(root),
-    tidy_stewart2026(root)
+    tidy_stewart2026(root),
+    tidy_diepstraten2026(root),
+    tidy_brimedwards2026(root)
   ) |>
     left_join(paper_metadata |> select(paper, rationale), by = "paper") |>
     mutate(

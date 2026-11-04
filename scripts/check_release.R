@@ -16,7 +16,7 @@ for (i in seq_len(nrow(cache_manifest))) {
 
 scores <- load_browser_data()
 stopifnot(all(standard_columns %in% names(scores)), nrow(scores) > 0L)
-stopifnot(dplyr::n_distinct(scores$paper) == 14L)
+stopifnot(dplyr::n_distinct(scores$paper) == 16L)
 stopifnot(all(c("BAX", "TP53", "PMAIP1") %in% scores$gene_key))
 depmap <- load_depmap_crispr()
 stopifnot(nrow(depmap) > 0L, all(c("MOLM-13", "THP-1", "OCI-LY-19") %in% depmap$cell_line))
