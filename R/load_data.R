@@ -77,6 +77,18 @@ write_processed_data <- function(root = ".", force = FALSE) {
   scores
 }
 
+# Columns the app displays or computes with. Importers keep extra audit fields
+# (DrugZ/MAGeCK side statistics, guide counts, provenance); those stay in the
+# released cache but are dropped in the running app to keep memory down.
+browser_score_columns <- c(
+  standard_columns, "experiment_id", "significance", "signed_log10_fdr", "rationale",
+  "n_orf_constructs", "n_sgrna", "published_effect_value", "published_p_value", "published_fdr"
+)
+
+slim_browser_scores <- function(scores) {
+  scores[, intersect(browser_score_columns, names(scores)), drop = FALSE]
+}
+
 load_browser_data <- function(root = ".", force = FALSE) {
   if (force) return(write_processed_data(root = root, force = TRUE))
   cache <- file.path(root, gene_scores_rds)

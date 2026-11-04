@@ -9,7 +9,7 @@ source("R/load_data.R")
 source("R/plots.R")
 source("R/screen_views.R")
 
-scores <- load_browser_data()
+scores <- slim_browser_scores(load_browser_data())
 depmap_crispr <- load_depmap_crispr()
 external_context <- load_external_context()
 metadata <- paper_metadata

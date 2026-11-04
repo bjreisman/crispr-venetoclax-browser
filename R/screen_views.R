@@ -113,7 +113,16 @@ screen_metrics <- list(
 
 screen_metric_choices <- stats::setNames(names(screen_metrics), vapply(screen_metrics, `[[`, character(1), "label"))
 
+# Builds one screen at a time: each screen's percentiles and z-scores use only
+# its own rows, and chunking keeps peak memory down on small app servers.
 build_screen_scores <- function(scores, registry = screen_view_registry) {
+  bind_rows(lapply(split(registry, registry$screen_id), function(screen) {
+    rows <- scores$paper %in% screen$paper & scores$experiment %in% screen$experiment
+    build_one_screen_scores(scores[rows, , drop = FALSE], screen)
+  }))
+}
+
+build_one_screen_scores <- function(scores, registry) {
   for (col in c("published_effect_value", "published_fdr")) {
     if (!col %in% names(scores)) scores[[col]] <- NA_real_
   }
