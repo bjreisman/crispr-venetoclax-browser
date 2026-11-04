@@ -28,3 +28,12 @@ v0.1.2 is the first release after v0.1.0; a v0.1.1 cache set was prepared but ne
 - `scripts/smoke_test.R` passed against the source rebuild, including biological checks for every added study (for example BAX enrichment in all MAGeCK and Eide2023 venetoclax arms, A1/BCL2A1 enrichment in both Deng2022 CRISPRa lines, and no FDR-based significance from the Stewart2026 unnormalized arms).
 - `Rscript --vanilla scripts/check_release.R` passed with the updated cache manifest, including Gene Explorer screen-view, metric, and expansion queries.
 - BrimEdwards2026 gene results are re-derived from GEO counts by `scripts/build_brimedwards2026.R`, which needs edgeR (Bioconductor; not in `renv.lock`). The distributed cache already contains these results, so running the app does not need edgeR.
+
+### Verification after publication (v0.1.2)
+
+Release v0.1.2 was published on 3 November 2026 from `main` at fe18aff (merges of #1 and #2), with the four caches above as assets. In a fresh clone of `main` with no local caches:
+
+- `scripts/download_prepared_data.R` downloaded all four assets from v0.1.2, and each matched the byte size and SHA-256 recorded in `data/metadata/cache_manifest.csv`. A second run skipped all four as already verified.
+- `Rscript --vanilla scripts/check_release.R` passed: 884,653 rows, 16 studies, 68 displayed experiments, including app construction and the Gene Explorer screen-view, metric, and expansion server queries.
+
+Not checked: a clean dependency installation on another operating system, or a source rebuild of the BrimEdwards2026 results with edgeR.
