@@ -16,6 +16,10 @@ The prepared caches are derived from public study supplements and repositories. 
 - [Nakao2023](https://www.nature.com/articles/s41375-023-01879-z)
 - [Nechiporuk2019](https://pmc.ncbi.nlm.nih.gov/articles/PMC6606338/)
 - [Portelinha2024](https://pmc.ncbi.nlm.nih.gov/articles/PMC11380151/)
+- [Sharon2019](https://doi.org/10.1126/scitranslmed.aax2863): MAGeCK workbook from [BioGRID ORCS Dataset 406](https://orcs.thebiogrid.org/Dataset/406)
+- [Stewart2026](https://doi.org/10.1016/j.xcrm.2025.102526): Table S4 ([PMC12866115](https://pmc.ncbi.nlm.nih.gov/articles/PMC12866115/)); counts in [GSE291338](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE291338)
+- [Wang2023](https://doi.org/10.1016/j.ccell.2022.12.002): Table S1 ([PMC9839614](https://pmc.ncbi.nlm.nih.gov/articles/PMC9839614/))
+- [Yokoyama2026](https://doi.org/10.1038/s41388-026-03970-y): Supplementary Tables 1 and 2
 
 ## External context
 

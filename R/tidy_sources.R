@@ -33,7 +33,15 @@ paper_metadata <- tibble::tribble(
   "He2026", 2026, "BH3-priming CRISPR/Cas9 knockout screen", "BH3-mimetic-resistant primary AML PDX cells P1-R and P2-R", "Human",
   "Dynamic BH3-priming screen in resistant AML PDX cells nominating ADSS2 and de novo AMP biosynthesis as sensitizers to venetoclax and MCL1 inhibition.",
   "Nakao2023", 2023, "Genome-wide CRISPR/Cas9 loss-of-function screens", "Mouse MLL::AF9 AML mMA9Cas cells; March5 WT and knockout", "Mouse",
-  "Genome-wide mouse AML screens identifying the MARCH5/UBE2J2/UBE2K mitochondrial E3 ubiquitin-ligase complex as a venetoclax-sensitization node and NOXA/Pmaip1 as a March5-regulated effector. Browser scores are reproducible DrugZ re-analyses of the published sgRNA counts; MAGeCK MLE fields are retained for audit and figure concordance."
+  "Genome-wide mouse AML screens identifying the MARCH5/UBE2J2/UBE2K mitochondrial E3 ubiquitin-ligase complex as a venetoclax-sensitization node and NOXA/Pmaip1 as a March5-regulated effector. Browser scores are reproducible DrugZ re-analyses of the published sgRNA counts; MAGeCK MLE fields are retained for audit and figure concordance.",
+  "Wang2023", 2023, "Genome-wide and RBP domain-focused CRISPR/Cas9 loss-of-function screens", "MOLM-13 AML", "Human",
+  "Parallel AML drug screens in MOLM-13 (Brunello genome-wide and a 492-gene RNA-binding-protein domain library) showing that loss of RNA splicing factors such as RBM10 and SR proteins sensitizes to venetoclax, motivating combination with the splicing-kinase inhibitor SM09419. Browser scores are the published venetoclax CRISPR scores (mean sgRNA log2 fold change vs DMSO); no p-values or FDRs were published.",
+  "Sharon2019", 2019, "Genome-wide CRISPR/Cas9 loss-of-function screen", "MOLM13-R1 acquired venetoclax-resistant AML (MOLM-13 derived)", "Human",
+  "Genome-wide TKO v1 knockout screen in acquired venetoclax-resistant MOLM13-R1 cells (venetoclax 400 nM vs DMSO, days 8-29) showing that loss of mitochondrial translation genes (DAP3, MRPL54, MRPL17, RBFA) restores venetoclax sensitivity; BAX loss was the top enriched hit.",
+  "Yokoyama2026", 2026, "Genome-wide CRISPR/Cas9 loss-of-function screens", "Peripheral T-cell lymphoma lines ED40515(-) and DEL; venetoclax, navitoclax and ABBV-467", "Human",
+  "Genome-wide knockout screens in two PTCL lines under venetoclax, navitoclax (BCL2/BCL-XL) and the MCL1 inhibitor ABBV-467, nominating MYLIP loss (via LDLR and cholesterol uptake) and the upstream RXRA/RXRB receptors as BH3-mimetic sensitizers. Browser rows are the published MAGeCK gene summaries (drug vs DMSO); the table gives p-values but no FDRs.",
+  "Stewart2026", 2026, "Genome-wide CRISPR/Cas9 loss-of-function screens", "OCI-AML2 AML; venetoclax, palbociclib, and venetoclax+palbociclib", "Human",
+  "OCI-AML2 Yusa-library knockout screens (day 21 vs DMSO) showing that loss of translation genes sensitizes to venetoclax but not venetoclax+palbociclib, and that the combination overcomes BAX-loss (venetoclax) and RB1-loss (palbociclib) resistance. Venetoclax and combination contrasts were not count-normalized by the authors, so raw LFCs are shifted negative; compare within-screen percentiles."
 )
 
 normalize_gene_symbol <- function(x) {
@@ -384,6 +392,276 @@ tidy_deng2022_crispra <- function(root = ".") {
     complete_standard()
 }
 
+# Wang2023 (Cancer Cell 2023; doi 10.1016/j.ccell.2022.12.002; PMC9839614).
+# Table S1 gene-level CRISPR scores from MOLM-13 Cas9 knockout screens. Only the
+# Venetoclax columns are imported. Each value is the paper's "CRISPR score":
+# mean log2 fold change (CPM-normalized drug / DMSO) across a gene's sgRNAs;
+# positive = enriched under venetoclax (resistance), negative = depleted
+# (sensitization). The table reports no p-values or FDRs.
+tidy_wang2023 <- function(root = ".") {
+  source_file <- file.path(root, "Wang2023/1-s2.0-S1535610822005888-mmc2.xlsx")
+  sheets <- list(
+    list(
+      sheet = "Genome-wide CRISPR screen",
+      skip = 1, # title row above the header
+      experiment = "Brunello genome-wide library venetoclax 25 nM vs DMSO day 20"
+    ),
+    list(
+      sheet = "RBP CRISPR screen",
+      skip = 0,
+      experiment = "RBP domain-focused library venetoclax vs DMSO"
+    )
+  )
+  purrr::map_dfr(sheets, function(spec) {
+    readxl::read_excel(source_file, sheet = spec$sheet, skip = spec$skip) |>
+      transmute(
+        gene_symbol = normalize_gene_symbol(.data$`Target gene`),
+        effect_value = coerce_number(.data$Venetoclax)
+      ) |>
+      filter(!is.na(.data$gene_symbol), !is.na(.data$effect_value)) |>
+      mutate(
+        experiment = spec$experiment,
+        source_sheet = spec$sheet,
+        effect_metric = "CRISPR score (mean sgRNA log2 fold change, venetoclax / DMSO)",
+        p_value = NA_real_,
+        fdr = NA_real_,
+        rank = rank(-abs(.data$effect_value), ties.method = "first"),
+        direction = classify_direction(.data$effect_value),
+        source_level = "gene",
+        source_file = source_file
+      )
+  }) |>
+    attach_metadata("Wang2023") |>
+    complete_standard()
+}
+
+# Sharon2019: author MAGeCK RRA workbook linked from BioGRID ORCS Dataset 406.
+# MOLM13-R1 (acquired venetoclax-resistant MOLM-13 clone), TKO v1, venetoclax
+# 400 nM vs DMSO; days 8, 16, 22 and 29 are repeat timepoints of one screen.
+# Days 16/22/29 have per-day sheets; day 8 exists only in the combined sheet,
+# whose day 16/22/29 columns are identical to the per-day sheets. Its "score"
+# columns are MAGeCK RRA scores, so effects come only from the "lfc" columns.
+# TKO control targets (EGFP, LacZ, luciferase, chr10 promoter/random) are dropped.
+sharon2019_control_ids <- c("chr10Promi", "chr10Rand", "EGFP", "LacZ", "luciferase")
+
+sharon2019_experiment <- function(day) {
+  paste0("MOLM13-R1 acquired-resistant venetoclax 400 nM vs DMSO day ", day)
+}
+
+tidy_sharon2019_day8 <- function(source_file) {
+  raw <- readxl::read_excel(source_file, sheet = "All days including D8")
+  arm <- function(prefix, label) {
+    raw |>
+      transmute(
+        gene_symbol = .data$Gene,
+        experiment = paste0(sharon2019_experiment(8), " | ", label, " selection"),
+        effect_metric = paste0("MAGeCK ", label, " selection LFC"),
+        effect_value = coerce_number(.data[[paste0("Day_8_", prefix, "|lfc")]]),
+        p_value = coerce_number(.data[[paste0("Day_8_", prefix, "|p-value")]]),
+        fdr = coerce_number(.data[[paste0("Day_8_", prefix, "|fdr")]]),
+        rank = coerce_number(.data[[paste0("Day_8_", prefix, "|rank")]]),
+        direction = classify_direction(.data$effect_value),
+        source_level = "gene",
+        source_file = source_file,
+        raw_effect_value = .data$effect_value
+      )
+  }
+  bind_rows(arm("neg", "negative"), arm("pos", "positive")) |>
+    attach_metadata("Sharon2019") |>
+    complete_standard()
+}
+
+tidy_sharon2019 <- function(root = ".") {
+  source_file <- file.path(root, "Sharon2019/MaGECK_D8-16-22-29.xlsx")
+  per_day <- purrr::map_dfr(c(16, 22, 29), \(day) {
+    tidy_mageck_gene_sheet(source_file, paste0("Day_", day), 0, "Sharon2019", sharon2019_experiment(day))
+  })
+  bind_rows(tidy_sharon2019_day8(source_file), per_day) |>
+    filter(!.data$gene_symbol %in% sharon2019_control_ids) |>
+    attach_metadata("Sharon2019") |>
+    complete_standard()
+}
+
+# Excel turned MARCHn/SEPTn/SEP15/DEC1 into dates in both supplementary tables.
+# The sgRNA IDs in Supplementary Table 2 keep the RefSeq accession
+# (e.g. "43164_NM_017824.4_..." for "5-Mar"). Symbols below are the pre-Excel
+# library symbols for those accessions (NCBI nuccore esummary, 2026-11-03), so
+# gene keys match the other screens; current HGNC symbols are kept for audit.
+# "1-Mar" (MARCH1 + MARC1) and "2-Mar" (MARCH2 + MARC2) each merge two genes in
+# the gene table and cannot be resolved, so they are dropped.
+yokoyama2026_refseq_symbols <- tibble::tribble(
+  ~refseq, ~restored_symbol, ~current_symbol,
+  "NM_178450", "MARCH3", "MARCHF3",
+  "NM_020814", "MARCH4", "MARCHF4",
+  "NM_017824", "MARCH5", "MARCHF5",
+  "NM_005885", "MARCH6", "MARCHF6",
+  "NM_022826", "MARCH7", "MARCHF7",
+  "NM_001002266", "MARCH8", "MARCHF8",
+  "NM_138396", "MARCH9", "MARCHF9",
+  "NM_001100875", "MARCH10", "MARCHF10",
+  "NM_001102562", "MARCH11", "MARCHF11",
+  "NM_052838", "SEPT1", "SEPTIN1",
+  "NM_006155", "SEPT2", "SEPTIN2",
+  "NM_145733", "SEPT3", "SEPTIN3",
+  "NM_001256782", "SEPT4", "SEPTIN4",
+  "NM_002688", "SEPT5", "SEPTIN5",
+  "NM_145802", "SEPT6", "SEPTIN6",
+  "NM_001011553", "SEPT7", "SEPTIN7",
+  "NM_001300799", "SEPT8", "SEPTIN8",
+  "NM_001113491", "SEPT9", "SEPTIN9",
+  "NM_178584", "SEPT10", "SEPTIN10",
+  "NM_018243", "SEPT11", "SEPTIN11",
+  "NM_144605", "SEPT12", "SEPTIN12",
+  "NM_207366", "SEPT14", "SEPTIN14",
+  "NM_004261", "SEP15", "SELENOF",
+  "NM_017418", "DEC1", "DEC1"
+)
+
+yokoyama2026_arms <- c(
+  ED_venetoclax = "ED40515(-) venetoclax vs DMSO",
+  ED_navitoclax = "ED40515(-) navitoclax vs DMSO",
+  ED_ABBV467 = "ED40515(-) ABBV-467 vs DMSO",
+  DEL_venetoclax = "DEL venetoclax vs DMSO",
+  DEL_navitoclax = "DEL navitoclax vs DMSO",
+  DEL_ABBV467 = "DEL ABBV-467 vs DMSO"
+)
+
+# Supplementary Table 1: MAGeCK gene summaries for six model-drug groups vs
+# DMSO. Like tidy_mageck_gene_sheet(), both arms keep the signed gene LFC
+# (median sgRNA LFC). The table has no FDR column, so fdr stays NA.
+tidy_yokoyama2026 <- function(root = ".") {
+  source_file <- file.path(root, "Yokoyama2026/41388_2026_3970_MOESM2_ESM.xlsx")
+  if (!file.exists(source_file)) return(tibble())
+  date_symbol <- "^[0-9]{1,2}-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$"
+
+  header <- readxl::read_excel(source_file, sheet = "Supplemental_Table_1. gene", col_names = FALSE, n_max = 3, .name_repair = "minimal")
+  group <- tidyr::fill(tibble(g = unlist(header[2, ])), "g")$g
+  col_names <- c("id", paste(group[-1], unlist(header[3, -1]), sep = "::"))
+  genes <- readxl::read_excel(source_file, sheet = "Supplemental_Table_1. gene", skip = 3, col_names = col_names, col_types = "text")
+
+  sgrna <- readxl::read_excel(source_file, sheet = "Supplementary_Table_2. sgRNA", skip = 3, col_types = "text",
+    col_names = c("Gene", "sgrna", names(yokoyama2026_arms)))
+
+  # Restore a date-mangled row only when its sgRNAs carry one RefSeq accession
+  # and their median LFC reproduces the gene LFC in all six groups.
+  restored <- sgrna |>
+    filter(str_detect(.data$Gene, date_symbol)) |>
+    mutate(refseq = str_match(.data$sgrna, "_([NX][MR]_[0-9]+)[.][0-9]+_")[, 2]) |>
+    group_by(.data$Gene) |>
+    filter(n_distinct(.data$refseq) == 1) |>
+    summarise(refseq = first(.data$refseq), across(all_of(names(yokoyama2026_arms)), \(x) stats::median(coerce_number(x))), .groups = "drop") |>
+    tidyr::pivot_longer(all_of(names(yokoyama2026_arms)), names_to = "group", values_to = "sgrna_median") |>
+    inner_join(
+      genes |>
+        select("id", all_of(paste0(names(yokoyama2026_arms), "::neg|lfc"))) |>
+        tidyr::pivot_longer(-"id", names_to = "group", values_to = "gene_lfc") |>
+        mutate(group = str_remove(.data$group, "::neg\\|lfc$"), gene_lfc = coerce_number(.data$gene_lfc)),
+      by = c(Gene = "id", "group")
+    ) |>
+    group_by(.data$Gene, .data$refseq) |>
+    summarise(max_diff = max(abs(.data$sgrna_median - .data$gene_lfc)), .groups = "drop") |>
+    filter(.data$max_diff < 1e-4) |>
+    inner_join(yokoyama2026_refseq_symbols, by = "refseq")
+
+  base <- genes |>
+    filter(!str_detect(.data$id, "^Control_")) |>
+    left_join(restored, by = c(id = "Gene")) |>
+    mutate(
+      source_symbol = .data$id,
+      gene_symbol = if_else(str_detect(.data$id, date_symbol), .data$restored_symbol, .data$id)
+    ) |>
+    filter(!is.na(.data$gene_symbol))
+
+  purrr::imap_dfr(yokoyama2026_arms, function(experiment, group) {
+    col <- \(field) coerce_number(base[[paste0(group, "::", field)]])
+    lfc <- col("neg|lfc")
+    arm <- function(side, label) {
+      tibble(
+        gene_symbol = base$gene_symbol,
+        experiment = paste0(experiment, " | ", label, " selection"),
+        effect_metric = paste("MAGeCK", label, "selection LFC"),
+        effect_value = lfc,
+        p_value = col(paste0(side, "|p_value")),
+        fdr = NA_real_,
+        rank = col(paste0(side, "|rank")),
+        direction = classify_direction(lfc),
+        source_level = "gene",
+        source_file = source_file,
+        raw_effect_value = lfc,
+        source_sheet = "Supplemental_Table_1. gene",
+        source_symbol = base$source_symbol,
+        restored_refseq = base$refseq,
+        restored_current_symbol = base$current_symbol
+      )
+    }
+    bind_rows(arm("neg", "negative"), arm("pos", "positive"))
+  }) |>
+    attach_metadata("Yokoyama2026") |>
+    complete_standard()
+}
+
+# Published gene-level edgeR summaries (Table S4, mmc2.xls): OCI-AML2 Yusa v1
+# knockout library, day-21 drug vs DMSO (the workbook ReadMe says "day 23").
+# effect_value is the authors' mid_lfc: the LFC of the median-p sgRNA, as in the
+# Figure 3A volcano; positive = enriched under drug. The authors could not
+# normalize the venetoclax and combination counts, so their mid_lfc values are
+# shifted to a median near -6 and their FDRs flag most genes. For those two arms
+# effect_value is median-centered and p/FDR are not used for significance; the
+# published values are kept in published_effect_value/p_value/fdr.
+tidy_stewart2026 <- function(root = ".") {
+  source_file <- file.path(root, "Stewart2026/mmc2.xls")
+  if (!file.exists(source_file)) return(tibble())
+  unnormalized <- c("VenVsDMSO_gene", "ComboVsDMSO_gene")
+  sheets <- c(
+    "VenVsDMSO_gene" = "OCI-AML2 Yusa library day 21 venetoclax 200 nM vs DMSO",
+    "ComboVsDMSO_gene" = "OCI-AML2 Yusa library day 21 venetoclax 200 nM + palbociclib 1 µM vs DMSO",
+    "PalboVsDMSO_gene" = "OCI-AML2 Yusa library day 21 palbociclib 1 µM vs DMSO (not a BH3 mimetic)"
+  )
+  purrr::imap_dfr(sheets, function(experiment, sheet) {
+    readxl::read_excel(source_file, sheet = sheet) |>
+      transmute(
+        gene_symbol = normalize_gene_symbol(.data$Gene),
+        effect_value = coerce_number(.data$mid_lfc),
+        p_value = coerce_number(.data$mid_pval),
+        fdr = coerce_number(.data$mid_fdr),
+        n_sgrna = coerce_number(.data$total),
+        n_sgrna_tested = coerce_number(.data$not_filtered),
+        n_sgrna_significant = coerce_number(.data$num_sig),
+        n_sgrna_up = coerce_number(.data$num_up),
+        n_sgrna_down = coerce_number(.data$num_down),
+        sgrna_lfc_mean = coerce_number(.data$lfc_mean),
+        sgrna_min_fdr = coerce_number(.data$min_fdr),
+        tier = .data$tiers,
+        camera_dir = .data$camera_dir,
+        camera_p_value = coerce_number(.data$camera_pval),
+        camera_fdr = coerce_number(.data$camera_fdr)
+      ) |>
+      mutate(
+        median_centered_mid_lfc = .data$effect_value - stats::median(.data$effect_value, na.rm = TRUE),
+        published_effect_value = .data$effect_value,
+        published_p_value = .data$p_value,
+        published_fdr = .data$fdr,
+        rank = rank(.data$p_value, ties.method = "first", na.last = "keep")
+      ) |>
+      mutate(
+        effect_value = if (sheet %in% unnormalized) .data$median_centered_mid_lfc else .data$effect_value,
+        p_value = if (sheet %in% unnormalized) NA_real_ else .data$p_value,
+        fdr = if (sheet %in% unnormalized) NA_real_ else .data$fdr,
+        experiment = experiment,
+        effect_metric = if (sheet %in% unnormalized) {
+          "edgeR median-p sgRNA log2 fold-change (mid_lfc), median-centered; published counts unnormalized"
+        } else {
+          "edgeR median-p sgRNA log2 fold-change (mid_lfc)"
+        },
+        direction = classify_direction(.data$effect_value),
+        source_level = "gene",
+        source_file = source_file
+      )
+  }) |>
+    attach_metadata("Stewart2026") |>
+    complete_standard()
+}
+
 tidy_eide2023_crispr <- function(root = ".") {
   source_file <- file.path(root, "data/external/eide2023/GSE216087_crispr_counts_for_geo.txt.gz")
   if (!file.exists(source_file)) return(tibble())
@@ -627,7 +905,11 @@ build_gene_scores <- function(root = ".") {
     tidy_portelinha2024(root),
     tidy_eide2023_crispr(root),
     tidy_he2026(root),
-    tidy_nakao2023(root)
+    tidy_nakao2023(root),
+    tidy_wang2023(root),
+    tidy_sharon2019(root),
+    tidy_yokoyama2026(root),
+    tidy_stewart2026(root)
   ) |>
     left_join(paper_metadata |> select(paper, rationale), by = "paper") |>
     mutate(

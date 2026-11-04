@@ -25,10 +25,28 @@ screen_view_registry <- tibble::tribble(
   "nechiporuk_brunello_ven", "Nechiporuk2019", "Brunello library venetoclax vs DMSO day 14 | negative selection", "Venetoclax · AML", "Nechiporuk 2019 · MOLM-13 Brunello", FALSE,
   "nechiporuk_ykosuke_ven", "Nechiporuk2019", "Y. Kosuke library venetoclax vs DMSO day 14 | positive selection", "Venetoclax · AML", "Nechiporuk 2019 · MOLM-13 Yusa", FALSE,
   "eide_ven", "Eide2023", "OCI-AML2 Yusa library day 21 venetoclax vs DMSO", "Venetoclax · AML", "Eide 2023 · OCI-AML2", FALSE,
+  "stewart_ven", "Stewart2026", "OCI-AML2 Yusa library day 21 venetoclax 200 nM vs DMSO", "Venetoclax · AML", "Stewart 2026 · OCI-AML2", FALSE,
+  "stewart_ven_palbo", "Stewart2026", "OCI-AML2 Yusa library day 21 venetoclax 200 nM + palbociclib 1 µM vs DMSO", "Venetoclax combinations", "Stewart 2026 · OCI-AML2 VEN + palbociclib", FALSE,
   "nakao_wt_ven", "Nakao2023", "March5-WT mMA9Cas venetoclax 3.5 µM vs DMSO", "Venetoclax · AML", "Nakao 2023 · mouse MLL-AF9", FALSE,
   "nakao_ko_ven", "Nakao2023", "March5-KO mMA9Cas venetoclax 3 µM vs DMSO", "Venetoclax · AML", "Nakao 2023 · mouse MLL-AF9, March5-KO", FALSE,
+  "wang_brunello_ven", "Wang2023", "Brunello genome-wide library venetoclax 25 nM vs DMSO day 20", "Venetoclax · AML", "Wang 2023 · MOLM-13 Brunello", FALSE,
+  "wang_rbp_ven", "Wang2023", "RBP domain-focused library venetoclax vs DMSO", "Venetoclax · AML", "Wang 2023 · MOLM-13 (RBP domain library)", FALSE,
+  "sharon_molm13r1_ven", "Sharon2019", "MOLM13-R1 acquired-resistant venetoclax 400 nM vs DMSO day 29 | positive selection", "Venetoclax · AML", "Sharon 2019 · MOLM13-R1 (acquired resistant)", FALSE,
+  "sharon_molm13r1_ven", "Sharon2019", "MOLM13-R1 acquired-resistant venetoclax 400 nM vs DMSO day 29 | negative selection", "Venetoclax · AML", "Sharon 2019 · MOLM13-R1 (acquired resistant)", FALSE,
   "guieze_ko_ven", "Guièze2019", "STARS replicate 1", "Venetoclax · lymphoid", "Guièze 2019 · OCI-Ly1 (hit list)", TRUE,
   "portelinha_ven", "Portelinha2024", "Positive selection screen table 1", "Venetoclax · lymphoid", "Portelinha 2024 · OCI-LY19 (hit list)", TRUE,
+  "yokoyama_ed_ven", "Yokoyama2026", "ED40515(-) venetoclax vs DMSO | positive selection", "Venetoclax · lymphoid", "Yokoyama 2026 · PTCL ED40515(−)", FALSE,
+  "yokoyama_ed_ven", "Yokoyama2026", "ED40515(-) venetoclax vs DMSO | negative selection", "Venetoclax · lymphoid", "Yokoyama 2026 · PTCL ED40515(−)", FALSE,
+  "yokoyama_del_ven", "Yokoyama2026", "DEL venetoclax vs DMSO | positive selection", "Venetoclax · lymphoid", "Yokoyama 2026 · PTCL DEL", FALSE,
+  "yokoyama_del_ven", "Yokoyama2026", "DEL venetoclax vs DMSO | negative selection", "Venetoclax · lymphoid", "Yokoyama 2026 · PTCL DEL", FALSE,
+  "yokoyama_ed_navitoclax", "Yokoyama2026", "ED40515(-) navitoclax vs DMSO | positive selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL ED40515(−) navitoclax", FALSE,
+  "yokoyama_ed_navitoclax", "Yokoyama2026", "ED40515(-) navitoclax vs DMSO | negative selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL ED40515(−) navitoclax", FALSE,
+  "yokoyama_del_navitoclax", "Yokoyama2026", "DEL navitoclax vs DMSO | positive selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL DEL navitoclax", FALSE,
+  "yokoyama_del_navitoclax", "Yokoyama2026", "DEL navitoclax vs DMSO | negative selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL DEL navitoclax", FALSE,
+  "yokoyama_ed_abbv467", "Yokoyama2026", "ED40515(-) ABBV-467 vs DMSO | positive selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL ED40515(−) ABBV-467 (MCL1i)", FALSE,
+  "yokoyama_ed_abbv467", "Yokoyama2026", "ED40515(-) ABBV-467 vs DMSO | negative selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL ED40515(−) ABBV-467 (MCL1i)", FALSE,
+  "yokoyama_del_abbv467", "Yokoyama2026", "DEL ABBV-467 vs DMSO | positive selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL DEL ABBV-467 (MCL1i)", FALSE,
+  "yokoyama_del_abbv467", "Yokoyama2026", "DEL ABBV-467 vs DMSO | negative selection", "Other BH3 mimetics", "Yokoyama 2026 · PTCL DEL ABBV-467 (MCL1i)", FALSE,
   "eide_ven_rux", "Eide2023", "OCI-AML2 Yusa library day 21 venetoclax+ruxolitinib vs DMSO", "Venetoclax combinations", "Eide 2023 · OCI-AML2 VEN + ruxolitinib", FALSE,
   "glytsou_ven_aza", "Glytsou2023", "V+A | positive selection", "Venetoclax combinations", "Glytsou 2023 · MOLM-13 VEN + azacitidine", FALSE,
   "glytsou_ven_aza", "Glytsou2023", "V+A | negative selection", "Venetoclax combinations", "Glytsou 2023 · MOLM-13 VEN + azacitidine", FALSE,
@@ -74,16 +92,16 @@ screen_metrics <- list(
     label = "Signed −log₁₀ FDR",
     column = "signed_log10_fdr",
     band = -log10(0.05),
-    band_note = paste0("Shaded: FDR ≤ 0.05. FDR reported as 0 is drawn at ±", screen_fdr_cap, "."),
-    axis = "← sensitizing    signed −log₁₀ FDR (directional arm)    resistance →",
+    band_note = paste0("Shaded: FDR ≤ 0.05, as published. FDR reported as 0 is drawn at ±", screen_fdr_cap, ". Stewart2026 venetoclax and combination FDRs are shown as published but not counted as significant."),
+    axis = "← sensitizing    signed −log₁₀ FDR as published (directional arm)    resistance →",
     hit_list_column = FALSE
   ),
   raw = list(
-    label = "Raw effect (paper units)",
-    column = "effect_value",
+    label = "Raw effect (as published)",
+    column = "published_effect",
     band = NA_real_,
-    band_note = "Raw effects use each paper's own units and are not comparable between screens.",
-    axis = "← sensitizing    raw effect value (paper units)    resistance →",
+    band_note = "Raw effects as published, in each paper's own units; not comparable between screens. Stewart2026 venetoclax and combination values are unnormalized as published (median about −6).",
+    axis = "← sensitizing    raw effect value as published (paper units)    resistance →",
     hit_list_column = FALSE
   )
 )
@@ -91,6 +109,9 @@ screen_metrics <- list(
 screen_metric_choices <- stats::setNames(names(screen_metrics), vapply(screen_metrics, `[[`, character(1), "label"))
 
 build_screen_scores <- function(scores) {
+  for (col in c("published_effect_value", "published_fdr")) {
+    if (!col %in% names(scores)) scores[[col]] <- NA_real_
+  }
   scores |>
     inner_join(screen_view_registry, by = c("paper", "experiment")) |>
     filter(!is.na(.data$effect_value)) |>
@@ -127,10 +148,14 @@ build_screen_scores <- function(scores) {
     ) |>
     ungroup() |>
     mutate(
+      # Published values; they differ from effect_value/fdr only where an
+      # importer recentred an unnormalized screen (Stewart2026).
+      published_effect = dplyr::coalesce(.data$published_effect_value, .data$effect_value),
+      published_fdr = dplyr::coalesce(.data$published_fdr, .data$fdr),
       signed_log10_fdr = dplyr::case_when(
-        is.na(.data$fdr) ~ NA_real_,
-        .data$fdr <= 0 ~ sign(.data$effect_value) * screen_fdr_cap,
-        TRUE ~ sign(.data$effect_value) * pmin(-log10(.data$fdr), screen_fdr_cap)
+        is.na(.data$published_fdr) ~ NA_real_,
+        .data$published_fdr <= 0 ~ sign(.data$published_effect) * screen_fdr_cap,
+        TRUE ~ sign(.data$published_effect) * pmin(-log10(.data$published_fdr), screen_fdr_cap)
       ),
       supported = (!is.na(.data$fdr) & .data$fdr <= 0.05) | grepl("^paper threshold", .data$significance),
       screen_group = factor(.data$screen_group, levels = screen_view_groups)
@@ -139,7 +164,7 @@ build_screen_scores <- function(scores) {
       "screen_id", "screen_group", "short_label", "hit_list_only", "paper", "experiment",
       "experiment_id", "gene_key", "gene_symbol", "effect_metric", "effect_value",
       "p_value", "fdr", "significance", "supported", "percentile", "robust_z",
-      "signed_log10_fdr", "screen_genes"
+      "published_effect", "published_fdr", "signed_log10_fdr", "screen_genes"
     )
 }
 

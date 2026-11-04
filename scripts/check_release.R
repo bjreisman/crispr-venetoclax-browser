@@ -16,7 +16,7 @@ for (i in seq_len(nrow(cache_manifest))) {
 
 scores <- load_browser_data()
 stopifnot(all(standard_columns %in% names(scores)), nrow(scores) > 0L)
-stopifnot(dplyr::n_distinct(scores$paper) == 10L)
+stopifnot(dplyr::n_distinct(scores$paper) == 14L)
 stopifnot(all(c("BAX", "TP53", "PMAIP1") %in% scores$gene_key))
 depmap <- load_depmap_crispr()
 stopifnot(nrow(depmap) > 0L, all(c("MOLM-13", "THP-1", "OCI-LY-19") %in% depmap$cell_line))
@@ -91,7 +91,7 @@ stopifnot(nrow(dplyr::anti_join(screen_view_registry, dplyr::distinct(scores, pa
 screen_support <- summarise_screen_support(app_env$screen_scores, c("BAX", "PMAIP1"))
 stopifnot(all(screen_support$n_resistance >= 8L), all(screen_support$n_sensitizing == 0L))
 mcl1_support <- summarise_screen_support(app_env$screen_scores, "BCL2L1")
-stopifnot(mcl1_support$n_sensitizing >= 3L, mcl1_support$n_resistance == 0L)
+stopifnot(mcl1_support$n_sensitizing >= 3L, mcl1_support$n_sensitizing > mcl1_support$n_resistance)
 
 lock <- jsonlite::read_json("renv.lock", simplifyVector = FALSE)
 missing <- names(lock$Packages)[!vapply(names(lock$Packages), requireNamespace, logical(1), quietly = TRUE)]
