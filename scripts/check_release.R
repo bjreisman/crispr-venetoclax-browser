@@ -93,6 +93,28 @@ shiny::testServer(app_env$server, {
   stopifnot(!anyDuplicated(screen_panel_rows(expanded, app_env$expandable_papers, input$screen_expand_papers, app_env$screen_detail_parents)$key))
   stopifnot(nzchar(output$gene_screen_plot))
 })
+# Paper Explorer: every result has grouped choices, defaults to a ★ result
+# where one exists, and renders its plot, summary, and top-hit tables.
+shiny::testServer(app_env$server, {
+  for (paper in unique(app_env$scores$paper)) {
+    choices <- paper_result_choices(app_env$paper_results, paper)
+    first <- choices[[1]][[1]]
+    stopifnot(!any(app_env$paper_results$main[app_env$paper_results$paper == paper]) || app_env$paper_results$main[match(first, app_env$paper_results$result_id)])
+    for (result in unlist(choices)) {
+      session$setInputs(paper_select = paper, experiment_select = result, paper_metric = "robust_z", paper_top_n = 10, paper_highlight_genes = "BCL2")
+      stopifnot(nrow(paper_view()) > 0L, !anyDuplicated(paper_view()$gene_key))
+      stopifnot(nzchar(output$paper_rank_plot), nzchar(output$paper_hits_resistance), nzchar(output$paper_summary$html))
+    }
+  }
+  session$setInputs(paper_select = "Chen2019", experiment_select = "Chen2019 :: Venetoclax vs DMSO day 16")
+  top <- paper_top_hits()$data
+  stopifnot(all(c("BAX", "PMAIP1") %in% top$gene_key[top$side == "resistance"]))
+  stopifnot(top$n_resistance[top$gene_key == "BAX"] >= 8L)
+  for (metric in names(app_env$paper_metric_choices)) {
+    session$setInputs(paper_metric = app_env$paper_metric_choices[[metric]])
+    stopifnot(nzchar(output$paper_rank_plot))
+  }
+})
 # Every screen-view registry row must match a displayed experiment, and the
 # canonical resistance genes must lead the venetoclax screens they appear in.
 stopifnot(nrow(dplyr::anti_join(screen_view_registry, dplyr::distinct(scores, paper, experiment), by = c("paper", "experiment"))) == 0L)
@@ -108,5 +130,5 @@ wrong_version <- names(lock$Packages)[vapply(names(lock$Packages), function(pack
   utils::packageVersion(package) != package_version(lock$Packages[[package]]$Version)
 }, logical(1))]
 if (length(wrong_version)) stop("Installed versions differ from renv.lock: ", paste(wrong_version, collapse = ", "))
-message("Release checks passed: hashes, data schema, catalog, cache-only loading, app construction/server queries, and locked package versions.")
+message("Release checks passed: hashes, data schema, catalog, cache-only loading, app construction/server queries (Gene and Paper Explorer), and locked package versions.")
 message("Scores: ", nrow(scores), "; studies: ", dplyr::n_distinct(scores$paper), "; displayed experiments: ", dplyr::n_distinct(scores$experiment_id))

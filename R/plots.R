@@ -71,61 +71,6 @@ plot_gene_effects <- function(df, x_label = "Effect value") {
     layout(legend = list(orientation = "h", y = -0.25))
 }
 
-plot_ranked_experiment <- function(df, enriched_n = 8, depleted_n = 8, highlight_gene_keys = character()) {
-  if (!nrow(df)) return(plotly_empty(type = "scatter", mode = "markers"))
-
-  if (is.null(enriched_n) || is.na(enriched_n)) enriched_n <- 8
-  if (is.null(depleted_n) || is.na(depleted_n)) depleted_n <- 8
-  enriched_n <- max(0, enriched_n)
-  depleted_n <- max(0, depleted_n)
-  if (is.null(highlight_gene_keys)) highlight_gene_keys <- character()
-
-  enriched <- df |>
-    filter(!is.na(.data$effect_value), .data$effect_value > 0) |>
-    arrange(desc(.data$effect_value), .data$rank) |>
-    slice_head(n = enriched_n)
-
-  depleted <- df |>
-    filter(!is.na(.data$effect_value), .data$effect_value < 0) |>
-    arrange(.data$effect_value, .data$rank) |>
-    slice_head(n = depleted_n)
-
-  highlighted <- df |>
-    filter(.data$gene_key %in% highlight_gene_keys, !is.na(.data$effect_value))
-
-  plot_df <- bind_rows(depleted, enriched, highlighted) |>
-    arrange(.data$rank, desc(abs(.data$effect_value))) |>
-    distinct(.data$gene_key, .keep_all = TRUE) |>
-    arrange(.data$effect_value) |>
-    mutate(
-      highlighted = .data$gene_key %in% highlight_gene_keys,
-      gene_label_text = if_else(.data$highlighted, paste0("<b>", .data$gene_symbol, "</b>"), .data$gene_symbol),
-      gene_label = forcats::fct_reorder(.data$gene_label_text, .data$effect_value),
-      label = paste0(
-        .data$gene_symbol,
-        if_else(.data$highlighted, " (highlighted)", ""),
-        "<br>", .data$direction,
-        "<br>effect: ", signif(.data$effect_value, 3),
-        "<br>FDR: ", signif(.data$fdr, 3)
-      )
-    )
-
-  if (!nrow(plot_df)) return(plotly_empty(type = "scatter", mode = "markers"))
-
-  p <- ggplot(plot_df, aes(x = effect_value, y = gene_label, color = direction, text = label)) +
-    geom_vline(xintercept = 0, color = "#b9b9b9", linewidth = 0.35) +
-    geom_segment(aes(x = 0, xend = effect_value, yend = gene_label), linewidth = 0.5, alpha = 0.65) +
-    geom_point(aes(size = highlighted), alpha = 0.85) +
-    scale_size_manual(values = c(`FALSE` = 2.4, `TRUE` = 4.2), guide = "none") +
-    scale_color_manual(values = effect_color_values, na.value = "#9a9a9a") +
-    labs(x = "Effect value", y = NULL, color = "Direction") +
-    theme_minimal(base_size = 12) +
-    theme(panel.grid.minor = element_blank(), legend.position = "bottom")
-
-  ggplotly(p, tooltip = "text") |>
-    layout(legend = list(orientation = "h", y = -0.18))
-}
-
 plot_cross_study_heatmap <- function(df, top_n = 40) {
   if (!nrow(df)) return(plotly_empty(type = "heatmap"))
 
@@ -577,4 +522,118 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
   ggplotly(p, tooltip = "text", source = "screen_panels") |>
     layout(showlegend = FALSE, margin = list(t = 50, b = 60)) |>
     event_register("plotly_click")
+}
+
+# Paper Explorer: every gene in one result, ordered by its within-screen
+# percentile (x) and drawn on the chosen metric (y). The strongest hits each
+# way, reference genes, and highlighted genes are coloured and labelled.
+paper_reference_genes <- c("BAX", "PMAIP1", "TP53")
+
+select_paper_hits <- function(df, value, top_n) {
+  ok <- !is.na(value)
+  up <- which(ok & value > 0)
+  down <- which(ok & value < 0)
+  list(
+    resistance = df$gene_key[up[order(-value[up])][seq_len(min(top_n, length(up)))]],
+    sensitizing = df$gene_key[down[order(value[down])][seq_len(min(top_n, length(down)))]]
+  )
+}
+
+# Hit tables have no genome-wide percentile or z-score, so metrics that are
+# undefined for a result fall back to the published effect.
+paper_metric_spec <- function(df, metric) {
+  spec <- screen_metrics[[metric]]
+  if (all(is.na(df[[spec$column]]))) spec <- screen_metrics$raw
+  spec
+}
+
+plot_paper_screen <- function(df, metric = "robust_z", top_n = 10, highlight_gene_keys = character()) {
+  if (!nrow(df)) return(plotly_empty(type = "scatter", mode = "markers"))
+  spec <- paper_metric_spec(df, metric)
+  hit_list <- all(is.na(df$percentile))
+  df$value <- df[[spec$column]]
+  df <- df[!is.na(df$value), , drop = FALSE]
+  if (!nrow(df)) return(plotly_empty(type = "scatter", mode = "markers"))
+  df$x <- if (hit_list) (rank(df$published_effect, ties.method = "first") - 0.5) / nrow(df) * 2 - 1 else df$percentile
+
+  hits <- select_paper_hits(df, df$value, top_n)
+  df <- df |>
+    mutate(
+      role = dplyr::case_when(
+        .data$gene_key %in% highlight_gene_keys ~ "Highlighted",
+        .data$gene_key %in% hits$resistance ~ "Top resistance",
+        .data$gene_key %in% hits$sensitizing ~ "Top sensitizing",
+        .data$gene_key %in% paper_reference_genes ~ "Reference (BAX, PMAIP1, TP53)",
+        TRUE ~ "Other genes"
+      ),
+      tip = paste0(
+        "<b>", .data$gene_symbol, "</b>",
+        if (hit_list) "" else paste0("<br>Within-screen percentile: ", sprintf("%+.3f", .data$percentile), " of ", format(.data$screen_genes, big.mark = ","), " genes"),
+        "<br>Robust z: ", dplyr::if_else(is.na(.data$robust_z), "n/a", sprintf("%+.1f", .data$robust_z)),
+        "<br>", .data$effect_metric, ": ", signif(.data$effect_value, 3),
+        "<br>FDR: ", dplyr::case_when(is.na(.data$fdr) ~ "not reported", .data$fdr <= 0 ~ "reported as 0", TRUE ~ as.character(signif(.data$fdr, 3))),
+        "<br>", .data$significance
+      )
+    )
+
+  role_style <- list(
+    "Other genes" = list(color = "rgba(150,150,150,0.35)", size = 4),
+    "Top sensitizing" = list(color = "#247a6b", size = 8),
+    "Top resistance" = list(color = "#b73e3e", size = 8),
+    "Reference (BAX, PMAIP1, TP53)" = list(color = "#2a6fb0", size = 9),
+    "Highlighted" = list(color = "#7a3fa0", size = 10)
+  )
+  p <- plot_ly(source = "paper_screen")
+  for (role in names(role_style)) {
+    d <- df[df$role == role, , drop = FALSE]
+    if (!nrow(d)) next
+    p <- p |> add_trace(
+      data = d, x = ~x, y = ~value, text = ~tip, hoverinfo = "text", name = role,
+      type = if (role == "Other genes") "scattergl" else "scatter", mode = "markers",
+      marker = list(color = role_style[[role]]$color, size = role_style[[role]]$size,
+                    line = list(color = "white", width = if (role == "Other genes") 0 else 0.8))
+    )
+  }
+
+  # Labels stack in a column beside each tail, joined to their points by
+  # leader lines, so tightly packed extreme genes stay readable.
+  labelled <- df[df$role != "Other genes", , drop = FALSE]
+  y_span <- diff(range(df$value))
+  stack_labels <- function(rows, up) {
+    if (!nrow(rows)) return(list())
+    rows <- rows[order(if (up) -rows$value else rows$value), , drop = FALSE]
+    start <- if (up) max(df$value) else min(df$value)
+    step <- min(0.042 * y_span, 0.9 * y_span / max(1, nrow(rows) - 1))
+    lapply(seq_len(nrow(rows)), function(i) {
+      row <- rows[i, ]
+      list(
+        x = row$x, y = row$value, text = row$gene_symbol, showarrow = TRUE, arrowhead = 0, arrowwidth = 0.6,
+        arrowcolor = "#b0b0b0", axref = "x", ayref = "y",
+        ax = if (up) 0.72 else -0.72, ay = start + (if (up) -1 else 1) * (i - 1) * step,
+        xanchor = if (up) "right" else "left", font = list(size = 11, color = role_style[[row$role]]$color)
+      )
+    })
+  }
+  annotations <- c(stack_labels(labelled[labelled$x >= 0, , drop = FALSE], TRUE), stack_labels(labelled[labelled$x < 0, , drop = FALSE], FALSE))
+
+  shapes <- list(list(type = "line", x0 = -1, x1 = 1, y0 = 0, y1 = 0, line = list(color = "#b9b9b9", width = 1)))
+  if (is.finite(spec$band)) {
+    y_range <- range(c(df$value, spec$band, -spec$band))
+    shapes <- c(shapes, list(
+      list(type = "rect", x0 = -1.02, x1 = 1.02, y0 = spec$band, y1 = y_range[2] * 1.05, fillcolor = "#b73e3e", opacity = 0.08, line = list(width = 0), layer = "below"),
+      list(type = "rect", x0 = -1.02, x1 = 1.02, y0 = y_range[1] * 1.05, y1 = -spec$band, fillcolor = "#247a6b", opacity = 0.08, line = list(width = 0), layer = "below")
+    ))
+  }
+  p |>
+    layout(
+      xaxis = list(
+        title = if (hit_list) "Genes in the published hit table, ordered by effect" else "← sensitizing    within-screen percentile    resistance →",
+        range = c(-1.08, 1.08), zeroline = FALSE, tickvals = c(-1, -0.5, 0, 0.5, 1), ticktext = c("−1", "−0.5", "0", "+0.5", "+1")
+      ),
+      yaxis = list(title = gsub("^← sensitizing +| +resistance →$", "", spec$axis), zeroline = FALSE),
+      shapes = shapes, annotations = annotations,
+      legend = list(orientation = "h", y = -0.15), hovermode = "closest",
+      margin = list(t = 20)
+    ) |>
+    config(displaylogo = FALSE)
 }

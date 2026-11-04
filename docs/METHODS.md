@@ -16,9 +16,17 @@ The core cache contains sixteen studies. It combines survival-selection knockout
 - Eide2023 guide-count summaries scale each sample to the median library size and center each experiment on its median gene (the library has no non-targeting guides). They are still exploratory treatment/control ratios without replicate-aware scoring, guide/control QC, p-values, or FDRs.
 - Patient expression/response correlations may include repeated specimens and measurements from the same subject; reported row counts are not independent-subject counts.
 - Gene matching normalizes symbols and uses curated aliases; it does not perform formal human/mouse orthology mapping. TP53 and mouse Trp53 remain separate keys. The four mouse A1 paralogs (Bcl2a1a/b/c/d) map to human BCL2A1; in the Gene Explorer screen view, merged paralogs keep their most extreme value.
-- Paper Explorer previews at most 10,000 rows. Its table CSV can be a subset; use the separate Download View control for the full filtered view.
+- The Paper Explorer full table previews at most 10,000 rows. Its table CSV can be a subset; use the separate Download View control for every row of the selected result.
 
 These limitations affect interpretation and target prioritization. They do not prevent sharing the software as a work in progress. The next scientific milestones are in [PUBLICATION_PLAN.md](PUBLICATION_PLAN.md).
+
+## Paper Explorer
+
+The Paper Explorer shows one result at a time: one comparison, with MAGeCK positive- and negative-selection arms merged as in the Gene Explorer. Results are grouped by the screen group of their parent screen; ★ marks the representative result used in the Gene Explorer, and Lin2019 essentiality scores and the Stewart2026 palbociclib-only arm sit under "Other tables".
+
+- The plot orders every gene by within-screen percentile (x) and draws it on the chosen metric (y): robust z (default), signed −log₁₀ FDR as published, or the raw effect as published. Hit tables without genome-wide scores order genes by their published effect.
+- The significance counts use FDR ≤ 0.05 or the paper's own threshold. Stewart2026 venetoclax and combination arms show "—" because their published FDRs come from unnormalized values.
+- "Other venetoclax screens" counts the venetoclax screens from other papers (the Gene Explorer's default groups) where the gene is in the same tail: top or bottom 10% of the screen, or listed in a published resistance hit table. Screens from the same paper are excluded so that timepoints and replicates do not count as replication.
 
 ## Gene Explorer screen summary
 

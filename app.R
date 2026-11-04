@@ -29,6 +29,9 @@ screen_detail_scores <- build_screen_scores(scores, build_screen_detail_registry
   mutate(row_level = 1L, row_key = .data$screen_id)
 expandable_papers <- sort(unique(screen_detail_scores$paper))
 screen_detail_parents <- unique(screen_detail_scores$parent_screen_id)
+paper_results <- build_paper_result_registry(scores, build_screen_detail_registry(scores))
+# Percentile is the x-axis of the Paper Explorer plot, so it is not a y option.
+paper_metric_choices <- screen_metric_choices[screen_metric_choices != "percentile"]
 screen_extra_group_choices <- c(
   "Other BH3 mimetics" = "Other BH3 mimetics",
   "CRISPRa, ORF, and BH3-priming assays" = "Other assays (direction not comparable)"
@@ -76,7 +79,10 @@ ui <- page_navbar(
       .metric { border: 1px solid #d9e2e7; border-radius: 8px; padding: 10px 12px; background: white; }
       .metric .value { font-size: 1.35rem; font-weight: 700; }
       .small-muted { color: #58656d; font-size: 0.9rem; }
-      .rationale-box { min-height: 190px; padding: 8px 4px; }
+      .rationale-box { padding: 4px 4px 0 4px; }
+      .paper-hit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
+      .paper-hit-grid h3 { font-size: 1.02rem; margin: 0 0 6px 0; }
+      .metric .detail { color: #58656d; font-size: 0.85rem; line-height: 1.35; }
       .rationale-box p { font-size: 1.02rem; line-height: 1.55; max-width: 980px; }
       .rationale-box strong { font-size: 1.08rem; }
       .baseline-note { color: #58656d; margin: 0 0 14px 0; max-width: 1000px; }
@@ -235,10 +241,10 @@ ui <- page_navbar(
         div(
           class = "sidebar-card",
           selectInput("paper_select", "Paper", choices = sort(unique(scores$paper))),
-          selectInput("experiment_select", "Experiment", choices = NULL),
-          sliderInput("top_enriched_n", "Enriched genes shown", min = 0, max = 100, value = 8, step = 1),
-          sliderInput("top_depleted_n", "Depleted genes shown", min = 0, max = 100, value = 8, step = 1),
-          numericInput("fdr_cutoff", "Maximum FDR", value = 1, min = 0, max = 1, step = 0.01),
+          selectInput("experiment_select", "Screen or result", choices = NULL),
+          div(class = "small-muted", "★ marks the result shown for this screen in the Gene Explorer; other entries are timepoints, replicates, doses, or derived tables."),
+          selectInput("paper_metric", "Metric", choices = paper_metric_choices, selected = "robust_z"),
+          sliderInput("paper_top_n", "Top hits labelled each way", min = 0, max = 25, value = 10, step = 1),
           selectizeInput(
             "paper_highlight_genes",
             "Highlight/add genes",
@@ -257,13 +263,24 @@ ui <- page_navbar(
         card_header("Study rationale"),
         uiOutput("paper_rationale")
       ),
+      uiOutput("paper_summary"),
       card(
-        card_header("Ranked experiment view"),
-        plotlyOutput("paper_rank_plot", height = "1240px")
+        card_header("Whole-screen view"),
+        tags$p(class = "small-muted", "Every gene in the result, ordered by within-screen percentile. Shaded bands mark the metric's signal threshold; the strongest hits each way and BAX, PMAIP1, and TP53 are labelled. Hover a point for details."),
+        plotlyOutput("paper_rank_plot", height = "620px")
       ),
       card(
-        card_header("Experiment table"),
-        DTOutput("paper_table")
+        card_header("Top hits"),
+        tags$p(class = "small-muted", "“Other venetoclax screens” counts the independent venetoclax screens from other papers where the gene is in the same tail (top or bottom 10%, or a published hit list), with how many of those reach FDR ≤ 0.05."),
+        div(
+          class = "paper-hit-grid",
+          div(tags$h3(style = "color:#b73e3e", "Resistance (enriched)"), DTOutput("paper_hits_resistance")),
+          div(tags$h3(style = "color:#247a6b", "Sensitizing (depleted)"), DTOutput("paper_hits_sensitizing"))
+        )
+      ),
+      accordion(
+        open = FALSE,
+        accordion_panel("Full table as published (every arm and column)", DTOutput("paper_table"))
       )
     )
   ),
@@ -448,6 +465,7 @@ ui <- page_navbar(
         tags$dt("2026-11-03"),
         tags$dd(
           tags$ul(
+            tags$li(tags$strong("Paper Explorer redesign"), " — ", "Results are grouped by screen type, with ★ marking the one shown in the Gene Explorer (now the default). The plot shows every gene by within-screen percentile on a choice of robust z, signed −log₁₀ FDR, or raw effect, labelling the top hits and BAX, PMAIP1, and TP53. A summary strip, top-hit tables with recurrence in other papers' venetoclax screens, and a collapsible full table replace the 11-column table."),
             tags$li(tags$strong("Expandable screens in the Gene Explorer"), " — ", "Screens with several results are marked ▸. Click one of a paper's dots, or pick it under Expand papers, to show each timepoint, replicate, dose, or derived table as an indented row; click again to collapse."),
             tags$li(tags$strong("BrimEdwards2026 and Diepstraten2026"), " — ", "Added the BrimEdwards2026 OCI-AML2 AZD4320 knockout screen (other BH3 mimetics) and the Diepstraten2026 Partita CRISPRa venetoclax hit lists. Updated data-availability notes for nine further candidates in the additional-screens catalog."),
             tags$li(tags$strong("Stewart2026 unnormalized arms"), " — ", "Stewart2026 venetoclax and venetoclax + palbociclib values are now median-centered, and their published FDRs no longer count as significant; this removes about 32,000 artifactual significant rows. The published values remain available under the Raw effect (as published) and Signed −log₁₀ FDR metrics."),
@@ -558,12 +576,8 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$paper_select, {
-    exps <- scores |>
-      filter(.data$paper == input$paper_select) |>
-      pull(.data$experiment) |>
-      unique() |>
-      sort()
-    updateSelectInput(session, "experiment_select", choices = exps, selected = exps[1])
+    choices <- paper_result_choices(paper_results, input$paper_select)
+    updateSelectInput(session, "experiment_select", choices = choices, selected = choices[[1]][[1]])
   }, ignoreInit = FALSE)
 
   selected_gene_keys <- reactive({
@@ -627,14 +641,18 @@ server <- function(input, output, session) {
     )
   })
 
-  paper_view <- reactive({
+  # Every row of the selected result as published (both MAGeCK arms).
+  paper_raw_view <- reactive({
     req(input$paper_select, input$experiment_select)
-    df <- scores |>
-      filter(.data$paper == input$paper_select, .data$experiment == input$experiment_select)
-    if (!is.na(input$fdr_cutoff)) {
-      df <- df |> filter(is.na(.data$fdr) | .data$fdr <= input$fdr_cutoff)
-    }
-    df |> arrange(desc(abs(.data$effect_value)))
+    scores |>
+      filter(.data$paper == input$paper_select, .data$experiment %in% paper_results$experiment[paper_results$result_id == input$experiment_select]) |>
+      arrange(desc(abs(.data$effect_value)))
+  })
+
+  # One row per gene with within-screen percentile, robust z, and signed FDR.
+  paper_view <- reactive({
+    req(input$experiment_select %in% paper_results$result_id)
+    paper_result_scores(scores, paper_results, input$experiment_select)
   })
 
   overview_view <- reactive({
@@ -934,17 +952,82 @@ server <- function(input, output, session) {
     )
   })
 
+  # Strongest hits each way, with how often each recurs in the same direction
+  # in independent venetoclax screens from other papers.
+  paper_top_hits <- reactive({
+    df <- paper_view()
+    req(nrow(df))
+    spec <- paper_metric_spec(df, input$paper_metric)
+    value <- df[[spec$column]]
+    hits <- select_paper_hits(df, value, max(10, input$paper_top_n))
+    other_papers <- setdiff(unique(screen_view_registry$paper), input$paper_select)
+    support <- summarise_screen_support(screen_scores, unique(unlist(hits)), papers = other_papers)
+    out <- df |>
+      mutate(value = value) |>
+      filter(.data$gene_key %in% unlist(hits)) |>
+      left_join(support |> select(-"gene_symbol"), by = "gene_key") |>
+      mutate(
+        side = if_else(.data$gene_key %in% hits$resistance, "resistance", "sensitizing"),
+        same = if_else(.data$side == "resistance", .data$n_resistance, .data$n_sensitizing),
+        same_fdr = if_else(.data$side == "resistance", .data$n_resistance_fdr, .data$n_sensitizing_fdr),
+        recurrence = if_else(.data$n_tested == 0, "not measured", paste0(.data$same, " of ", .data$n_tested, if_else(.data$same_fdr > 0, paste0(" · ", .data$same_fdr, " at FDR ≤ 0.05"), "")))
+      )
+    list(data = out, spec = spec)
+  })
+
+  paper_hit_table <- function(which_side) {
+    hits <- paper_top_hits()
+    df <- hits$data[hits$data$side == which_side, , drop = FALSE]
+    df <- df[order(if (which_side == "resistance") -df$value else df$value), , drop = FALSE]
+    hit_list <- all(is.na(df$percentile))
+    tbl <- tibble::tibble(
+      Gene = df$gene_symbol,
+      !!hits$spec$label := signif(df$value, 3),
+      Percentile = if (hit_list) NULL else sprintf("%+.3f", df$percentile),
+      FDR = case_when(is.na(df$fdr) ~ "—", df$fdr <= 0 ~ "0", TRUE ~ format(signif(df$fdr, 2), scientific = TRUE)),
+      `Other venetoclax screens` = df$recurrence
+    )
+    datatable(tbl, rownames = FALSE, options = list(dom = "t", pageLength = nrow(tbl), ordering = FALSE, columnDefs = list(list(className = "dt-left", targets = "_all"))))
+  }
+  output$paper_hits_resistance <- renderDT(paper_hit_table("resistance"))
+  output$paper_hits_sensitizing <- renderDT(paper_hit_table("sensitizing"))
+
+  output$paper_summary <- renderUI({
+    df <- paper_view()
+    req(nrow(df))
+    hit_list <- all(is.na(df$percentile))
+    has_stats <- any(!is.na(df$fdr)) || any(grepl("^paper threshold", df$significance))
+    count_tile <- function(label, n) {
+      div(class = "metric", div(class = "small-muted", label), div(class = "value", if (has_stats) format(n, big.mark = ",") else "—"),
+          if (!has_stats) div(class = "detail", "No FDR or threshold in the browser for this result"))
+    }
+    refs <- df |> filter(.data$gene_key %in% paper_reference_genes)
+    ref_text <- if (hit_list) {
+      listed <- intersect(paper_reference_genes, refs$gene_key)
+      if (length(listed)) paste("In hit list:", paste(listed, collapse = ", ")) else "None in the hit list"
+    } else if (nrow(refs)) {
+      paste(paste0(refs$gene_symbol, " ", sub("-", "−", sprintf("%+.2f", refs$percentile))), collapse = " · ")
+    } else "Not measured"
+    div(
+      class = "metric-strip",
+      div(class = "metric", div(class = "small-muted", if (hit_list) "Genes in published table" else "Genes scored"), div(class = "value", format(nrow(df), big.mark = ","))),
+      count_tile("Resistance hits (FDR ≤ 0.05 or paper cutoff)", sum(df$supported & df$effect_value > 0)),
+      count_tile("Sensitizing hits (FDR ≤ 0.05 or paper cutoff)", sum(df$supported & df$effect_value < 0)),
+      div(class = "metric", div(class = "small-muted", if (hit_list) "Reference genes" else "Reference genes (percentile)"), div(class = "detail", style = "font-size:1rem; font-weight:600; color:#2a3a44", ref_text))
+    )
+  })
+
   output$paper_rank_plot <- renderPlotly({
-    plot_ranked_experiment(
+    plot_paper_screen(
       paper_view(),
-      enriched_n = input$top_enriched_n,
-      depleted_n = input$top_depleted_n,
+      metric = input$paper_metric,
+      top_n = input$paper_top_n,
       highlight_gene_keys = input$paper_highlight_genes
     )
   })
 
   output$paper_table <- renderDT({
-    paper_view() |>
+    paper_raw_view() |>
       slice_head(n = max_paper_table_rows) |>
       select(paper, experiment, gene_symbol, species, effect_metric, effect_value, p_value, fdr, rank, direction, source_level) |>
       datatable(filter = "top", extensions = "Buttons", options = list(pageLength = 20, scrollX = TRUE, dom = "Bfrtip", buttons = c("copy", "csv")))
@@ -1058,7 +1141,7 @@ server <- function(input, output, session) {
   )
   output$download_paper_view <- downloadHandler(
     filename = function() paste0(input$paper_select, "_", make.names(input$experiment_select), ".csv"),
-    content = function(file) readr::write_csv(paper_view(), file)
+    content = function(file) readr::write_csv(paper_raw_view(), file)
   )
   output$download_overview <- downloadHandler(
     filename = function() "cross_study_recurrent_hits.csv",

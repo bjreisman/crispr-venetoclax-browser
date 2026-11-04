@@ -266,3 +266,54 @@ summarise_screen_support <- function(screen_scores, gene_keys, papers = NULL) {
     )
   })
 }
+
+# Paper Explorer results: one entry per comparison (MAGeCK arms merged) for
+# every experiment in the browser. Each takes the group of its screen in the
+# registry or detail registry; `main` marks the Gene Explorer representative.
+paper_result_other_group <- "Other tables (not venetoclax response)"
+
+build_paper_result_registry <- function(scores, detail_registry) {
+  main <- screen_view_registry |>
+    distinct(.data$paper, .data$experiment, .keep_all = TRUE) |>
+    transmute(.data$paper, .data$experiment, group = as.character(.data$screen_group), .data$hit_list_only, main = TRUE)
+  detail <- detail_registry |>
+    transmute(.data$paper, .data$experiment, group = as.character(.data$screen_group), .data$hit_list_only, main = FALSE)
+  distinct(scores, .data$paper, .data$experiment) |>
+    left_join(distinct(bind_rows(main, detail), .data$paper, .data$experiment, .keep_all = TRUE), by = c("paper", "experiment")) |>
+    mutate(
+      group = dplyr::coalesce(.data$group, paper_result_other_group),
+      hit_list_only = dplyr::coalesce(.data$hit_list_only, FALSE),
+      main = dplyr::coalesce(.data$main, FALSE),
+      result_label = strip_selection_arm(.data$experiment),
+      result_id = paste(.data$paper, .data$result_label, sep = " :: ")
+    ) |>
+    group_by(.data$result_id) |>
+    mutate(main = any(.data$main), hit_list_only = any(.data$hit_list_only), group = first(.data$group)) |>
+    ungroup() |>
+    mutate(group = factor(.data$group, levels = c(screen_view_groups, paper_result_other_group)))
+}
+
+# Grouped choices for one paper: representative screens first, marked ★.
+paper_result_choices <- function(result_registry, paper) {
+  results <- result_registry |>
+    filter(.data$paper == !!paper) |>
+    distinct(.data$result_id, .data$result_label, .data$group, .data$main)
+  results <- results[order(results$group, !results$main, stringr::str_rank(results$result_label, numeric = TRUE)), ]
+  labels <- paste0(if_else(results$main, "★ ", ""), results$result_label)
+  groups <- droplevels(results$group)
+  lapply(split(stats::setNames(results$result_id, labels), groups), as.list)
+}
+
+# Within-screen metrics for one Paper Explorer result.
+paper_result_scores <- function(scores, result_registry, result_id) {
+  result <- result_registry |> filter(.data$result_id == !!result_id)
+  if (!nrow(result)) return(build_one_screen_scores(scores[0, ], tibble::tibble(paper = character(), experiment = character())))
+  registry <- result |>
+    transmute(
+      screen_id = .data$result_id, .data$paper, .data$experiment,
+      screen_group = as.character(.data$group), short_label = .data$result_label, .data$hit_list_only
+    )
+  rows <- scores$paper %in% registry$paper & scores$experiment %in% registry$experiment
+  build_one_screen_scores(scores[rows, , drop = FALSE], registry) |>
+    mutate(screen_group = as.character(.data$screen_group))
+}
