@@ -492,6 +492,14 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
           .data$fdr <= 0 ~ "reported as 0",
           TRUE ~ as.character(signif(.data$fdr, 3))
         ),
+        dplyr::if_else(
+          is.na(.data$fdr) & !is.na(.data$published_fdr) | .data$published_effect != .data$effect_value,
+          paste0(
+            "<br>As published: ", signif(.data$published_effect, 3),
+            ", FDR ", signif(.data$published_fdr, 3), " (unnormalized; not counted as significant)"
+          ),
+          ""
+        ),
         "<br>", .data$significance
       )
     )
