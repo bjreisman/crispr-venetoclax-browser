@@ -70,17 +70,15 @@ The DepMap builder expects `CRISPRGeneEffect_selected_26Q1.csv` containing the m
 
 `scripts/smoke_test.R` performs the existing full analysis checks and **forces data rebuilding**. It requires raw inputs and the Nakao environment. `scripts/check_release.R` checks prepared caches and app startup without rebuilding or changing scientific results.
 
-## Deploy to shinyapps.io
+## Deploy
 
-Install `rsconnect`, configure your account locally, and run:
+The app is published on [Posit Connect Cloud](https://bjreisman-crispr-venetoclax-browser.share.connect.posit.cloud). Install `rsconnect` (1.6 or later), log in once with `rsconnect::connectCloudUser()`, and run:
 
 ```r
-# Configure credentials with rsconnect::setAccountInfo() locally.
-# Keep tokens and secrets out of repository files.
-source("scripts/deploy_shinyapps.R")
+source("scripts/deploy.R")
 ```
 
-Set `SHINYAPPS_APP_NAME` to choose a different app name. The deployment script includes app code and all four prepared caches: gene scores, DepMap, external context, and additional-screen candidates. It excludes raw source files.
+Set `DEPLOY_APP_ID` to update an existing content item and `DEPLOY_APP_NAME` to choose a different name. For shinyapps.io, configure credentials with `rsconnect::setAccountInfo()` and run `source("scripts/deploy_shinyapps.R")`. Keep tokens and secrets out of repository files. The deployment bundle includes app code and all four prepared caches: gene scores, DepMap, external context, and additional-screen candidates. It excludes raw source files.
 
 ## Data, license, and citation
 
