@@ -398,7 +398,9 @@ screen_panel_rows <- function(df, expandable_papers = character(), expanded_pape
       kids <- children |> filter(.data$parent_screen_id == sc$screen_id) |> arrange(.data$detail_order)
       tibble(
         key = c(sc$screen_id, kids$row_key),
-        label = c(paste0(marker, sc$short_label), if (nrow(kids)) paste0("<span style='color:#6b7780'>", kids$short_label, "</span>"))
+        label = c(paste0(marker, sc$short_label), if (nrow(kids)) paste0("<span style='color:#6b7780'>", kids$short_label, "</span>")),
+        # Labels with a ▸/▾ marker are clickable and toggle this paper.
+        toggle_paper = c(if (nzchar(marker)) sc$paper else NA_character_, rep(NA_character_, nrow(kids)))
       )
     })
     bind_rows(tibble(key = paste0("header :: ", group), label = paste0("<b>", group, "</b>")), screen_rows)
@@ -527,10 +529,49 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
       axis.text.y = element_text(size = 10.5)
     )
 
+  toggles <- rows[!is.na(rows$toggle_paper), ]
   ggplotly(p, tooltip = "text", source = "screen_panels") |>
     layout(showlegend = FALSE, margin = list(t = 50, b = 60)) |>
-    event_register("plotly_click")
+    event_register("plotly_click") |>
+    htmlwidgets::onRender(screen_label_click_js, data = as.list(stats::setNames(toggles$toggle_paper, toggles$label)))
 }
+
+# Clicking a ▸/▾ screen label sends its paper to input$screen_label_click.
+# One capture-phase listener on the widget hit-tests the label boxes, so it
+# works even when Plotly redraws or reuses the axis text nodes, or when a drag
+# layer sits on top of them.
+screen_label_click_js <- "
+function(el, x, labels) {
+  el._screenLabels = labels || {};
+  function labelAt(e) {
+    var texts = el.querySelectorAll('.ytick text');
+    for (var i = 0; i < texts.length; i++) {
+      var paper = el._screenLabels[texts[i].textContent.trim()];
+      if (!paper) continue;
+      var r = texts[i].getBoundingClientRect();
+      if (e.clientX >= r.left - 2 && e.clientX <= r.right + 2 && e.clientY >= r.top - 2 && e.clientY <= r.bottom + 2) {
+        return {node: texts[i], paper: paper};
+      }
+    }
+    return null;
+  }
+  if (el._screenLabelBound) return;
+  el._screenLabelBound = true;
+  el.addEventListener('click', function(e) {
+    var hit = labelAt(e);
+    if (!hit) return;
+    e.stopPropagation();
+    Shiny.setInputValue('screen_label_click', hit.paper, {priority: 'event'});
+  }, true);
+  el.addEventListener('mousemove', function(e) {
+    var hit = labelAt(e);
+    if (el._hoverLabel && (!hit || el._hoverLabel !== hit.node)) el._hoverLabel.style.textDecoration = '';
+    el._hoverLabel = hit ? hit.node : null;
+    if (hit) hit.node.style.textDecoration = 'underline';
+    el.classList.toggle('screen-label-hover', !!hit);
+  }, true);
+}
+"
 
 # Paper Explorer: every gene in one result, ordered by its within-screen
 # percentile (x) and drawn on the chosen metric (y). The strongest hits each

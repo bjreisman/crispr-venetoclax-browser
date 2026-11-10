@@ -85,6 +85,7 @@ ui <- page_navbar(
       .rationale-box { padding: 4px 4px 0 4px; }
       .paper-hit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
       .paper-hit-grid h3 { font-size: 1.02rem; margin: 0 0 6px 0; }
+      .screen-label-hover, .screen-label-hover * { cursor: pointer !important; }
       .paper-screens .grp { color: #58656d; font-size: 0.8rem; margin: 10px 0 4px 0; }
       .paper-screens .grp:first-child { margin-top: 2px; }
       .paper-screens .screen-btn { display: block; width: 100%; text-align: left; border: 1px solid #c9d3d9; border-radius: 6px; background: white; padding: 6px 9px; margin-bottom: 6px; font-size: 0.88rem; line-height: 1.3; cursor: pointer; }
@@ -162,7 +163,7 @@ ui <- page_navbar(
               choices = expandable_papers,
               selected = character(),
               multiple = TRUE,
-              options = list(placeholder = "Click a dot, or pick papers", plugins = list("remove_button"))
+              options = list(placeholder = "Click a ▸ screen, or pick papers", plugins = list("remove_button"))
             )
           ),
           conditionalPanel(
@@ -204,7 +205,7 @@ ui <- page_navbar(
             class = "small-muted",
             "One representative result per independent screen: the latest timepoint, and for MAGeCK the selection arm matching the gene's direction. ",
             "Percentiles rank the gene among all genes in that screen. Hit-list tables are not genome-wide, so listed genes are shown without a percentile. ",
-            "Papers marked ▸ have more results (timepoints, replicates, doses, derived tables): click one of their dots, or pick them under Expand papers, to show each result as an indented row. ",
+            "Screens marked ▸ have more results (timepoints, replicates, doses, derived tables): click the screen name, or pick the paper under Expand papers, to show each result as an indented row; click ▾ again to collapse. ",
             "Switch to All results for every arm and table in paper-native units."
           )
         ),
@@ -482,6 +483,12 @@ ui <- page_navbar(
     card(
       card_header("Changelog"),
         tags$dl(
+        tags$dt("2026-11-10"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("Click a screen name to expand it"), " — ", "In the Gene Explorer, click a screen name marked ▸ to show its timepoints, replicates, and doses, and click ▾ to collapse it. Clicking one of its dots still works.")
+          )
+        ),
         tags$dt("2026-11-10 (v0.1.3)"),
         tags$dd(
           tags$ul(
@@ -842,14 +849,18 @@ server <- function(input, output, session) {
       bind_rows(baseline)
   })
 
-  # Clicking a dot expands or collapses that paper's individual results.
-  observeEvent(event_data("plotly_click", source = "screen_panels"), {
-    paper <- event_data("plotly_click", source = "screen_panels")$customdata
+  # Clicking a ▸/▾ screen label, or one of its dots, expands or collapses
+  # that paper's individual results.
+  toggle_screen_paper <- function(paper) {
     if (is.null(paper) || !length(paper) || !paper[[1]] %in% expandable_papers) return()
     paper <- paper[[1]]
     current <- input$screen_expand_papers
     expanded <- if (paper %in% current) setdiff(current, paper) else c(current, paper)
     updateSelectizeInput(session, "screen_expand_papers", selected = expanded)
+  }
+  observeEvent(input$screen_label_click, toggle_screen_paper(input$screen_label_click))
+  observeEvent(event_data("plotly_click", source = "screen_panels"), {
+    toggle_screen_paper(event_data("plotly_click", source = "screen_panels")$customdata)
   })
 
   screen_metric <- reactive({

@@ -98,6 +98,13 @@ shiny::testServer(app_env$server, {
   stopifnot(all(c("↳ day 8", "↳ day 29") %in% expanded$short_label[expanded$paper == "Sharon2019"]))
   stopifnot(!anyDuplicated(screen_panel_rows(expanded, app_env$expandable_papers, input$screen_expand_papers, app_env$screen_detail_parents)$key))
   stopifnot(nzchar(output$gene_screen_plot))
+  # ▸/▾ screen labels carry their paper for click-to-expand, and the plot
+  # binds the label click handler; children and unexpandable screens do not.
+  rows <- screen_panel_rows(gene_screen_view(), app_env$expandable_papers, input$screen_expand_papers, app_env$screen_detail_parents)
+  stopifnot(identical(unique(stats::na.omit(rows$toggle_paper[grepl("Sharon 2019", rows$label)])), "Sharon2019"))
+  stopifnot(all(is.na(rows$toggle_paper[!grepl("^[▸▾] ", rows$label)])), all(rows$toggle_paper[grepl("^[▸▾] ", rows$label)] %in% app_env$expandable_papers))
+  stopifnot(grepl("screen_label_click", output$gene_screen_plot, fixed = TRUE))
+  session$setInputs(screen_label_click = "Sharon2019")
 })
 # Paper Explorer: each paper opens on a Gene Explorer representative result
 # where one exists, every screen button and timepoint chip selects a result,
