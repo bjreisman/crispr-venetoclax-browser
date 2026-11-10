@@ -82,6 +82,15 @@ ui <- page_navbar(
       .rationale-box { padding: 4px 4px 0 4px; }
       .paper-hit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
       .paper-hit-grid h3 { font-size: 1.02rem; margin: 0 0 6px 0; }
+      .paper-screens .grp { color: #58656d; font-size: 0.8rem; margin: 10px 0 4px 0; }
+      .paper-screens .grp:first-child { margin-top: 2px; }
+      .paper-screens .screen-btn { display: block; width: 100%; text-align: left; border: 1px solid #c9d3d9; border-radius: 6px; background: white; padding: 6px 9px; margin-bottom: 6px; font-size: 0.88rem; line-height: 1.3; cursor: pointer; }
+      .paper-screens .screen-btn:hover { border-color: #8aa0ad; }
+      .paper-screens .screen-btn.on { border-color: #2a6fb0; background: #eaf2fa; color: #1d4f80; }
+      .paper-screens .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+      .paper-screens .chip { font-size: 0.76rem; padding: 1px 7px; border: 1px solid #c9d3d9; border-radius: 5px; background: white; color: #58656d; cursor: pointer; }
+      .paper-screens .chip.on { background: #2a6fb0; border-color: #2a6fb0; color: white; }
+      .paper-screens .note { color: #58656d; font-size: 0.78rem; margin: 2px 0 10px 0; }
       .metric .detail { color: #58656d; font-size: 0.85rem; line-height: 1.35; }
       .rationale-box p { font-size: 1.02rem; line-height: 1.55; max-width: 980px; }
       .rationale-box strong { font-size: 1.08rem; }
@@ -96,6 +105,12 @@ ui <- page_navbar(
       .gene-summary .gene { font-weight: 700; }
       .gene-summary .detail { color: #58656d; font-size: 0.9rem; line-height: 1.4; }
       @media (max-width: 800px) { .metric-strip { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
+    ")),
+    tags$script(HTML("
+      $(document).on('click', '.paper-screens [data-result]', function(e) {
+        e.stopPropagation();
+        Shiny.setInputValue('paper_result_click', $(this).attr('data-result'), {priority: 'event'});
+      });
     "))
   ),
   nav_panel(
@@ -241,8 +256,8 @@ ui <- page_navbar(
         div(
           class = "sidebar-card",
           selectInput("paper_select", "Paper", choices = sort(unique(scores$paper))),
-          selectInput("experiment_select", "Screen or result", choices = NULL),
-          div(class = "small-muted", "★ marks the result shown for this screen in the Gene Explorer; other entries are timepoints, replicates, doses, or derived tables."),
+          tags$label(class = "control-label", "Screen"),
+          uiOutput("paper_screen_buttons"),
           selectInput("paper_metric", "Metric", choices = paper_metric_choices, selected = "robust_z"),
           sliderInput("paper_top_n", "Top hits labelled each way", min = 0, max = 25, value = 10, step = 1),
           selectizeInput(
@@ -465,7 +480,7 @@ ui <- page_navbar(
         tags$dt("2026-11-03"),
         tags$dd(
           tags$ul(
-            tags$li(tags$strong("Paper Explorer redesign"), " — ", "Results are grouped by screen type, with ★ marking the one shown in the Gene Explorer (now the default). The plot shows every gene by within-screen percentile on a choice of robust z, signed −log₁₀ FDR, or raw effect, labelling the top hits and BAX, PMAIP1, and TP53. A summary strip, top-hit tables with recurrence in other papers' venetoclax screens, and a collapsible full table replace the 11-column table."),
+            tags$li(tags$strong("Paper Explorer redesign"), " — ", "Each paper's screens are buttons in the sidebar, grouped by screen type, with small buttons for timepoints, doses, and replicates; the result shown in the Gene Explorer opens by default. The plot shows every gene by within-screen percentile on a choice of robust z, signed −log₁₀ FDR, or raw effect, labelling the top hits and BAX, PMAIP1, and TP53. A summary strip, top-hit tables with recurrence in other papers' venetoclax screens, and a collapsible full table replace the 11-column table."),
             tags$li(tags$strong("Expandable screens in the Gene Explorer"), " — ", "Screens with several results are marked ▸. Click one of a paper's dots, or pick it under Expand papers, to show each timepoint, replicate, dose, or derived table as an indented row; click again to collapse."),
             tags$li(tags$strong("BrimEdwards2026 and Diepstraten2026"), " — ", "Added the BrimEdwards2026 OCI-AML2 AZD4320 knockout screen (other BH3 mimetics) and the Diepstraten2026 Partita CRISPRa venetoclax hit lists. Updated data-availability notes for nine further candidates in the additional-screens catalog."),
             tags$li(tags$strong("Stewart2026 unnormalized arms"), " — ", "Stewart2026 venetoclax and venetoclax + palbociclib values are now median-centered, and their published FDRs no longer count as significant; this removes about 32,000 artifactual significant rows. The published values remain available under the Raw effect (as published) and Signed −log₁₀ FDR metrics."),
@@ -575,9 +590,40 @@ server <- function(input, output, session) {
     }
   })
 
+  # The selected Paper Explorer result; the paper's first screen by default.
+  paper_result_selected <- reactiveVal(NULL)
+  observeEvent(input$paper_result_click, {
+    if (input$paper_result_click %in% paper_results$result_id[paper_results$paper == input$paper_select]) {
+      paper_result_selected(input$paper_result_click)
+    }
+  })
+
+  output$paper_screen_buttons <- renderUI({
+    req(input$paper_select)
+    selected <- paper_result_selected()
+    groups <- paper_screen_buttons(paper_results, input$paper_select)
+    multi <- any(vapply(unlist(groups, recursive = FALSE), function(screen) nrow(screen$results) > 1, logical(1)))
+    tags$div(
+      class = "paper-screens",
+      lapply(names(groups), function(group) tagList(
+        tags$div(class = "grp", group),
+        lapply(groups[[group]], function(screen) {
+          ids <- screen$results$result_id
+          tags$div(
+            class = paste("screen-btn", if (any(ids %in% selected)) "on"), `data-result` = ids[1],
+            screen$label,
+            if (length(ids) > 1) tags$div(class = "chips", lapply(seq_along(ids), function(i) {
+              tags$span(class = paste("chip", if (identical(ids[i], selected)) "on"), `data-result` = ids[i], screen$results$chip_label[i])
+            }))
+          )
+        })
+      )),
+      if (multi) tags$div(class = "note", "Small buttons are other timepoints, doses, replicates, or tables of that screen; the first is the one shown in the Gene Explorer.")
+    )
+  })
+
   observeEvent(input$paper_select, {
-    choices <- paper_result_choices(paper_results, input$paper_select)
-    updateSelectInput(session, "experiment_select", choices = choices, selected = choices[[1]][[1]])
+    paper_result_selected(paper_default_result(paper_results, input$paper_select))
   }, ignoreInit = FALSE)
 
   selected_gene_keys <- reactive({
@@ -643,16 +689,16 @@ server <- function(input, output, session) {
 
   # Every row of the selected result as published (both MAGeCK arms).
   paper_raw_view <- reactive({
-    req(input$paper_select, input$experiment_select)
+    req(input$paper_select, paper_result_selected())
     scores |>
-      filter(.data$paper == input$paper_select, .data$experiment %in% paper_results$experiment[paper_results$result_id == input$experiment_select]) |>
+      filter(.data$paper == input$paper_select, .data$experiment %in% paper_results$experiment[paper_results$result_id == paper_result_selected()]) |>
       arrange(desc(abs(.data$effect_value)))
   })
 
   # One row per gene with within-screen percentile, robust z, and signed FDR.
   paper_view <- reactive({
-    req(input$experiment_select %in% paper_results$result_id)
-    paper_result_scores(scores, paper_results, input$experiment_select)
+    req(paper_result_selected() %in% paper_results$result_id)
+    paper_result_scores(scores, paper_results, paper_result_selected())
   })
 
   overview_view <- reactive({
@@ -1140,7 +1186,7 @@ server <- function(input, output, session) {
     content = function(file) readr::write_csv(gene_view(), file)
   )
   output$download_paper_view <- downloadHandler(
-    filename = function() paste0(input$paper_select, "_", make.names(input$experiment_select), ".csv"),
+    filename = function() paste0(input$paper_select, "_", make.names(paper_result_selected()), ".csv"),
     content = function(file) readr::write_csv(paper_raw_view(), file)
   )
   output$download_overview <- downloadHandler(

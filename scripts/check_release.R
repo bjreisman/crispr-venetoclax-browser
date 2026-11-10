@@ -93,20 +93,30 @@ shiny::testServer(app_env$server, {
   stopifnot(!anyDuplicated(screen_panel_rows(expanded, app_env$expandable_papers, input$screen_expand_papers, app_env$screen_detail_parents)$key))
   stopifnot(nzchar(output$gene_screen_plot))
 })
-# Paper Explorer: every result has grouped choices, defaults to a ★ result
-# where one exists, and renders its plot, summary, and top-hit tables.
+# Paper Explorer: each paper opens on a Gene Explorer representative result
+# where one exists, every screen button and timepoint chip selects a result,
+# and each result renders its plot, summary, and top-hit tables.
 shiny::testServer(app_env$server, {
+  session$setInputs(paper_metric = "robust_z", paper_top_n = 10, paper_highlight_genes = "BCL2")
   for (paper in unique(app_env$scores$paper)) {
-    choices <- paper_result_choices(app_env$paper_results, paper)
-    first <- choices[[1]][[1]]
-    stopifnot(!any(app_env$paper_results$main[app_env$paper_results$paper == paper]) || app_env$paper_results$main[match(first, app_env$paper_results$result_id)])
-    for (result in unlist(choices)) {
-      session$setInputs(paper_select = paper, experiment_select = result, paper_metric = "robust_z", paper_top_n = 10, paper_highlight_genes = "BCL2")
-      stopifnot(nrow(paper_view()) > 0L, !anyDuplicated(paper_view()$gene_key))
+    session$setInputs(paper_select = paper)
+    rows <- app_env$paper_results[app_env$paper_results$paper == paper, ]
+    stopifnot(!any(rows$main) || rows$main[match(paper_result_selected(), rows$result_id)])
+    stopifnot(nzchar(output$paper_screen_buttons$html))
+    buttons <- paper_screen_buttons(app_env$paper_results, paper)
+    ids <- unlist(lapply(unlist(buttons, recursive = FALSE), function(screen) screen$results$result_id))
+    stopifnot(setequal(ids, unique(rows$result_id)))
+    for (result in ids) {
+      session$setInputs(paper_result_click = result)
+      stopifnot(identical(paper_result_selected(), result), nrow(paper_view()) > 0L, !anyDuplicated(paper_view()$gene_key))
       stopifnot(nzchar(output$paper_rank_plot), nzchar(output$paper_hits_resistance), nzchar(output$paper_summary$html))
     }
   }
-  session$setInputs(paper_select = "Chen2019", experiment_select = "Chen2019 :: Venetoclax vs DMSO day 16")
+  # A result from another paper is ignored.
+  session$setInputs(paper_select = "Chen2019")
+  session$setInputs(paper_result_click = "Chen2019 :: Venetoclax vs DMSO day 16")
+  session$setInputs(paper_result_click = "Sharon2019 :: MOLM13-R1 acquired-resistant venetoclax 400 nM vs DMSO day 8")
+  stopifnot(identical(paper_result_selected(), "Chen2019 :: Venetoclax vs DMSO day 16"))
   top <- paper_top_hits()$data
   stopifnot(all(c("BAX", "PMAIP1") %in% top$gene_key[top$side == "resistance"]))
   stopifnot(top$n_resistance[top$gene_key == "BAX"] >= 8L)

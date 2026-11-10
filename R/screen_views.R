@@ -273,35 +273,31 @@ summarise_screen_support <- function(screen_scores, gene_keys, papers = NULL) {
 paper_result_other_group <- "Other tables (not venetoclax response)"
 
 build_paper_result_registry <- function(scores, detail_registry) {
+  # Screen buttons use the Gene Explorer label without its "Paper YYYY · " prefix.
+  screen_labels <- screen_view_registry |>
+    distinct(.data$screen_id, .keep_all = TRUE) |>
+    transmute(.data$screen_id, screen_label = sub("^[^·]+· ", "", .data$short_label))
   main <- screen_view_registry |>
     distinct(.data$paper, .data$experiment, .keep_all = TRUE) |>
-    transmute(.data$paper, .data$experiment, group = as.character(.data$screen_group), .data$hit_list_only, main = TRUE)
+    transmute(.data$paper, .data$experiment, .data$screen_id, group = as.character(.data$screen_group), .data$hit_list_only, main = TRUE)
   detail <- detail_registry |>
-    transmute(.data$paper, .data$experiment, group = as.character(.data$screen_group), .data$hit_list_only, main = FALSE)
+    transmute(.data$paper, .data$experiment, screen_id = .data$parent_screen_id, group = as.character(.data$screen_group), .data$hit_list_only, main = FALSE)
   distinct(scores, .data$paper, .data$experiment) |>
     left_join(distinct(bind_rows(main, detail), .data$paper, .data$experiment, .keep_all = TRUE), by = c("paper", "experiment")) |>
+    left_join(screen_labels, by = "screen_id") |>
     mutate(
       group = dplyr::coalesce(.data$group, paper_result_other_group),
       hit_list_only = dplyr::coalesce(.data$hit_list_only, FALSE),
       main = dplyr::coalesce(.data$main, FALSE),
       result_label = strip_selection_arm(.data$experiment),
-      result_id = paste(.data$paper, .data$result_label, sep = " :: ")
+      result_id = paste(.data$paper, .data$result_label, sep = " :: "),
+      screen_id = dplyr::coalesce(.data$screen_id, .data$result_id),
+      screen_label = dplyr::coalesce(.data$screen_label, .data$result_label)
     ) |>
     group_by(.data$result_id) |>
     mutate(main = any(.data$main), hit_list_only = any(.data$hit_list_only), group = first(.data$group)) |>
     ungroup() |>
     mutate(group = factor(.data$group, levels = c(screen_view_groups, paper_result_other_group)))
-}
-
-# Grouped choices for one paper: representative screens first, marked ★.
-paper_result_choices <- function(result_registry, paper) {
-  results <- result_registry |>
-    filter(.data$paper == !!paper) |>
-    distinct(.data$result_id, .data$result_label, .data$group, .data$main)
-  results <- results[order(results$group, !results$main, stringr::str_rank(results$result_label, numeric = TRUE)), ]
-  labels <- paste0(if_else(results$main, "★ ", ""), results$result_label)
-  groups <- droplevels(results$group)
-  lapply(split(stats::setNames(results$result_id, labels), groups), as.list)
 }
 
 # Within-screen metrics for one Paper Explorer result.
@@ -316,4 +312,57 @@ paper_result_scores <- function(scores, result_registry, result_id) {
   rows <- scores$paper %in% registry$paper & scores$experiment %in% registry$experiment
   build_one_screen_scores(scores[rows, , drop = FALSE], registry) |>
     mutate(screen_group = as.character(.data$screen_group))
+}
+
+# Drop the words every label shares at the start and end, keeping a leading
+# shared word before a number ("day 8", "day 29").
+trim_shared_words <- function(x) {
+  if (length(x) < 2) return(x)
+  words <- strsplit(x, " ", fixed = TRUE)
+  shared <- function(ws) {
+    n <- 0
+    while (all(lengths(ws) > n + 1) && length(unique(vapply(ws, `[`, "", n + 1))) == 1) n <- n + 1
+    n
+  }
+  lead <- shared(words)
+  if (lead > 0 && any(grepl("^[0-9]", vapply(words, `[`, "", lead + 1)))) lead <- lead - 1
+  words <- lapply(words, function(w) w[(lead + 1):length(w)])
+  tail_n <- shared(lapply(words, rev))
+  # Give back trailing words until brackets balance ("IC50 (10 nM)").
+  balanced <- function(n) all(vapply(words, function(w) {
+    txt <- paste(w[seq_len(length(w) - n)], collapse = " ")
+    lengths(regmatches(txt, gregexpr("(", txt, fixed = TRUE))) == lengths(regmatches(txt, gregexpr(")", txt, fixed = TRUE)))
+  }, logical(1)))
+  while (tail_n > 0 && !balanced(tail_n)) tail_n <- tail_n - 1
+  vapply(words, function(w) paste(w[seq_len(length(w) - tail_n)], collapse = " "), "")
+}
+
+# Screens for one paper's Paper Explorer buttons: groups of screens, each with
+# its results (the Gene Explorer representative first) and short chip labels.
+paper_screen_buttons <- function(result_registry, paper) {
+  results <- result_registry |>
+    filter(.data$paper == !!paper) |>
+    distinct(.data$result_id, .data$result_label, .data$group, .data$main, .data$screen_id, .data$screen_label)
+  results <- results[order(results$group, results$screen_id, !results$main, stringr::str_rank(results$result_label, numeric = TRUE)), ]
+  results <- results |>
+    group_by(.data$screen_id) |>
+    mutate(screen_main = any(.data$main), chip_label = trim_shared_words(.data$result_label)) |>
+    ungroup()
+  screen_order <- results |>
+    distinct(.data$group, .data$screen_id, .data$screen_label, .data$screen_main)
+  # Screens follow the curated registry order; other tables follow by name.
+  registry_rank <- match(screen_order$screen_id, unique(screen_view_registry$screen_id))
+  screen_order <- screen_order[order(screen_order$group, is.na(registry_rank), registry_rank, stringr::str_rank(screen_order$screen_label, numeric = TRUE)), ]
+  lapply(split(screen_order, droplevels(screen_order$group)), function(screens) {
+    lapply(seq_len(nrow(screens)), function(i) {
+      list(
+        label = screens$screen_label[i],
+        results = results[results$screen_id == screens$screen_id[i], c("result_id", "chip_label", "main")]
+      )
+    })
+  })
+}
+
+paper_default_result <- function(result_registry, paper) {
+  paper_screen_buttons(result_registry, paper)[[1]][[1]]$results$result_id[1]
 }

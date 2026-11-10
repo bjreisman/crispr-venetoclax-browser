@@ -22,7 +22,7 @@ These limitations affect interpretation and target prioritization. They do not p
 
 ## Paper Explorer
 
-The Paper Explorer shows one result at a time: one comparison, with MAGeCK positive- and negative-selection arms merged as in the Gene Explorer. Results are grouped by the screen group of their parent screen; ★ marks the representative result used in the Gene Explorer, and Lin2019 essentiality scores and the Stewart2026 palbociclib-only arm sit under "Other tables".
+The Paper Explorer shows one result at a time: one comparison, with MAGeCK positive- and negative-selection arms merged as in the Gene Explorer. Each screen is a sidebar button, grouped by screen group; a screen's timepoints, doses, replicates, and derived tables are small buttons inside it, led by the representative result used in the Gene Explorer, which opens by default. Lin2019 essentiality scores and the Stewart2026 palbociclib-only arm sit under "Other tables".
 
 - The plot orders every gene by within-screen percentile (x) and draws it on the chosen metric (y): robust z (default), signed −log₁₀ FDR as published, or the raw effect as published. Hit tables without genome-wide scores order genes by their published effect.
 - The significance counts use FDR ≤ 0.05 or the paper's own threshold. Stewart2026 venetoclax and combination arms show "—" because their published FDRs come from unnormalized values.
