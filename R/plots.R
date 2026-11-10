@@ -543,8 +543,13 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
     )
 
   toggles <- rows[!is.na(rows$toggle_paper), ]
-  ggplotly(p, tooltip = "text", source = "screen_panels") |>
-    layout(showlegend = FALSE, margin = list(t = 50, b = 60)) |>
+  widget <- ggplotly(p, tooltip = "text", source = "screen_panels")
+  # ggplotly sizes the left margin from the raw label strings, HTML tags
+  # included, so styled labels (folded headings) waste space. Let Plotly size
+  # it from the rendered text instead.
+  for (axis in grep("^yaxis", names(widget$x$layout), value = TRUE)) widget$x$layout[[axis]]$automargin <- TRUE
+  widget |>
+    layout(showlegend = FALSE, margin = list(t = 50, b = 60, l = 10)) |>
     event_register("plotly_click") |>
     htmlwidgets::onRender(screen_label_click_js, data = as.list(stats::setNames(toggles$toggle_paper, trimws(gsub("<[^>]+>", "", toggles$label)))))
 }
