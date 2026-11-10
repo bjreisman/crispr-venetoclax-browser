@@ -102,7 +102,17 @@ shiny::testServer(app_env$server, {
   # binds the label click handler; children and unexpandable screens do not.
   rows <- screen_panel_rows(gene_screen_view(), app_env$expandable_papers, input$screen_expand_papers, app_env$screen_detail_parents)
   stopifnot(identical(unique(stats::na.omit(rows$toggle_paper[grepl("Sharon 2019", rows$label)])), "Sharon2019"))
-  stopifnot(all(is.na(rows$toggle_paper[!grepl("^[▸▾] ", rows$label)])), all(rows$toggle_paper[grepl("^[▸▾] ", rows$label)] %in% app_env$expandable_papers))
+  headers <- startsWith(rows$key, "header :: ")
+  stopifnot(all(is.na(rows$toggle_paper[!headers & !grepl("^[▸▾] ", rows$label)])), all(rows$toggle_paper[!headers & grepl("^[▸▾] ", rows$label)] %in% app_env$expandable_papers))
+  stopifnot(all(rows$toggle_paper[headers] == paste0("group::", sub("^header :: ", "", rows$key[headers]))))
+  # Folding a group keeps its heading, drops its screens, and still plots.
+  folded <- screen_panel_rows(gene_screen_view(), app_env$expandable_papers, input$screen_expand_papers, app_env$screen_detail_parents, "Venetoclax · AML")
+  stopifnot("header :: Venetoclax · AML" %in% folded$key, nrow(folded) < nrow(rows), grepl("screens\\)", folded$label[folded$key == "header :: Venetoclax · AML"]))
+  stopifnot(!any(c("chen_molm13_ven", "sharon_molm13r1_ven") %in% folded$key))
+  session$setInputs(screen_label_click = "group::Venetoclax · AML")
+  stopifnot(identical(collapsed_screen_groups(), "Venetoclax · AML"), nzchar(output$gene_screen_plot))
+  session$setInputs(screen_label_click = "group::Venetoclax · AML")
+  stopifnot(length(collapsed_screen_groups()) == 0L)
   stopifnot(grepl("screen_label_click", output$gene_screen_plot, fixed = TRUE))
   session$setInputs(screen_label_click = "Sharon2019")
 })

@@ -381,7 +381,7 @@ plot_external_crispr_rank <- function(df, top_n = 20) {
 # (for expanded papers) that screen's individual results underneath.
 # Returns keys (unique row ids) and display labels in top-to-bottom order.
 screen_panel_rows <- function(df, expandable_papers = character(), expanded_papers = character(),
-                              screen_detail_parents = character()) {
+                              screen_detail_parents = character(), collapsed_groups = character()) {
   reps <- bind_rows(screen_view_registry, baseline_registry) |>
     distinct(.data$screen_id, .data$paper, .data$screen_group, .data$short_label)
   children <- df |>
@@ -403,7 +403,19 @@ screen_panel_rows <- function(df, expandable_papers = character(), expanded_pape
         toggle_paper = c(if (nzchar(marker)) sc$paper else NA_character_, rep(NA_character_, nrow(kids)))
       )
     })
-    bind_rows(tibble(key = paste0("header :: ", group), label = paste0("<b>", group, "</b>")), screen_rows)
+    # Group headings fold and unfold their screens; a folded group keeps only
+    # its heading, with a count of the screens it hides.
+    folded <- group %in% collapsed_groups
+    header <- tibble(
+      key = paste0("header :: ", group),
+      label = if (folded) {
+        paste0("<b>▸ ", group, "</b> <span style='color:#6b7780'>(", nrow(screens), " screen", if (nrow(screens) == 1) "" else "s", ")</span>")
+      } else {
+        paste0("<b>▾ ", group, "</b>")
+      },
+      toggle_paper = paste0("group::", group)
+    )
+    if (folded) header else bind_rows(header, screen_rows)
   })
   bind_rows(rows)
 }
@@ -417,7 +429,7 @@ screen_panel_height <- function(df, ...) {
 
 plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "percentile",
                                expandable_papers = character(), expanded_papers = character(),
-                               screen_detail_parents = character()) {
+                               screen_detail_parents = character(), collapsed_groups = character()) {
   spec <- screen_metrics[[metric]]
   if (!"baseline" %in% names(df)) df$baseline <- FALSE
   df <- df |>
@@ -425,7 +437,7 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
     filter(!is.na(.data$value) | (spec$hit_list_column & .data$hit_list_only))
   if (!nrow(df)) return(plotly_empty(type = "scatter", mode = "markers"))
 
-  rows <- screen_panel_rows(df, expandable_papers, expanded_papers, screen_detail_parents)
+  rows <- screen_panel_rows(df, expandable_papers, expanded_papers, screen_detail_parents, collapsed_groups)
   y_levels <- rows$key
   finite_values <- df$value[is.finite(df$value)]
   value_range <- range(c(0, finite_values, if (is.finite(spec$band)) c(-spec$band, spec$band)))
@@ -510,9 +522,10 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
   }
   p <- p +
     geom_vline(xintercept = 0, color = "#b9b9b9", linewidth = 0.35) +
-    geom_point(data = dplyr::filter(plot_df, .data$row_level == 0, !.data$baseline), size = 3, color = "#2a6fb0", stroke = 1) +
-    geom_point(data = dplyr::filter(plot_df, .data$baseline), size = 3, color = "#6b6b6b", stroke = 1) +
-    geom_point(data = dplyr::filter(plot_df, .data$row_level == 1), size = 2.2, color = "#86a9cf", stroke = 0.8) +
+    # Rows in folded groups have no y level; they keep every gene facet but draw no points.
+    geom_point(data = dplyr::filter(plot_df, .data$row_level == 0, !.data$baseline, !is.na(.data$y)), size = 3, color = "#2a6fb0", stroke = 1) +
+    geom_point(data = dplyr::filter(plot_df, .data$baseline, !is.na(.data$y)), size = 3, color = "#6b6b6b", stroke = 1) +
+    geom_point(data = dplyr::filter(plot_df, .data$row_level == 1, !is.na(.data$y)), size = 2.2, color = "#86a9cf", stroke = 0.8) +
     scale_shape_manual(values = marker_shapes, name = NULL, drop = FALSE) +
     scale_y_discrete(limits = rev(y_levels), labels = stats::setNames(rows$label, rows$key), drop = FALSE) +
     scale_x_continuous(limits = x_limits, breaks = breaks, labels = break_labels) +
@@ -533,10 +546,11 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
   ggplotly(p, tooltip = "text", source = "screen_panels") |>
     layout(showlegend = FALSE, margin = list(t = 50, b = 60)) |>
     event_register("plotly_click") |>
-    htmlwidgets::onRender(screen_label_click_js, data = as.list(stats::setNames(toggles$toggle_paper, toggles$label)))
+    htmlwidgets::onRender(screen_label_click_js, data = as.list(stats::setNames(toggles$toggle_paper, trimws(gsub("<[^>]+>", "", toggles$label)))))
 }
 
-# Clicking a ▸/▾ screen label sends its paper to input$screen_label_click.
+# Clicking a ▸/▾ screen label sends its paper to input$screen_label_click;
+# clicking a group heading sends "group::<group>".
 # One capture-phase listener on the widget hit-tests the label boxes, so it
 # works even when Plotly redraws or reuses the axis text nodes, or when a drag
 # layer sits on top of them.

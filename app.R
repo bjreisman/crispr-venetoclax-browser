@@ -205,7 +205,7 @@ ui <- page_navbar(
             class = "small-muted",
             "One representative result per independent screen: the latest timepoint, and for MAGeCK the selection arm matching the gene's direction. ",
             "Percentiles rank the gene among all genes in that screen. Hit-list tables are not genome-wide, so listed genes are shown without a percentile. ",
-            "Screens marked ▸ have more results (timepoints, replicates, doses, derived tables): click the screen name, or pick the paper under Expand papers, to show each result as an indented row; click ▾ again to collapse. ",
+            "Screens marked ▸ have more results (timepoints, replicates, doses, derived tables): click the screen name, or pick the paper under Expand papers, to show each result as an indented row; click ▾ again to collapse. Click a group heading, such as ▾ Venetoclax · AML, to fold or unfold its screens. ",
             "Switch to All results for every arm and table in paper-native units."
           )
         ),
@@ -486,6 +486,7 @@ ui <- page_navbar(
         tags$dt("2026-11-10"),
         tags$dd(
           tags$ul(
+            tags$li(tags$strong("Fold screen groups"), " — ", "Click a group heading in the Gene Explorer, such as ▾ Venetoclax · AML, to fold its screens into one line and click it again to unfold them. Folding only changes the chart; the summaries above it still count every screen."),
             tags$li(tags$strong("Click a screen name to expand it"), " — ", "In the Gene Explorer, click a screen name marked ▸ to show its timepoints, replicates, and doses, and click ▾ to collapse it. Clicking one of its dots still works.")
           )
         ),
@@ -858,7 +859,18 @@ server <- function(input, output, session) {
     expanded <- if (paper %in% current) setdiff(current, paper) else c(current, paper)
     updateSelectizeInput(session, "screen_expand_papers", selected = expanded)
   }
-  observeEvent(input$screen_label_click, toggle_screen_paper(input$screen_label_click))
+  # Folded group headings, toggled by clicking them.
+  collapsed_screen_groups <- reactiveVal(character())
+  observeEvent(input$screen_label_click, {
+    clicked <- input$screen_label_click
+    if (startsWith(clicked, "group::")) {
+      group <- sub("^group::", "", clicked)
+      folded <- collapsed_screen_groups()
+      collapsed_screen_groups(if (group %in% folded) setdiff(folded, group) else c(folded, group))
+    } else {
+      toggle_screen_paper(clicked)
+    }
+  })
   observeEvent(event_data("plotly_click", source = "screen_panels"), {
     toggle_screen_paper(event_data("plotly_click", source = "screen_panels")$customdata)
   })
@@ -918,7 +930,7 @@ server <- function(input, output, session) {
     if (!nrow(df)) {
       return(tags$p(class = "baseline-empty", "The selected genes were not measured in the selected screens."))
     }
-    plotlyOutput("gene_screen_plot", height = paste0(screen_panel_height(df, expandable_papers, input$screen_expand_papers, screen_detail_parents), "px"))
+    plotlyOutput("gene_screen_plot", height = paste0(screen_panel_height(df, expandable_papers, input$screen_expand_papers, screen_detail_parents, collapsed_screen_groups()), "px"))
   })
 
   output$gene_screen_plot <- renderPlotly({
@@ -930,7 +942,8 @@ server <- function(input, output, session) {
       metric = screen_metric(),
       expandable_papers = expandable_papers,
       expanded_papers = input$screen_expand_papers,
-      screen_detail_parents = screen_detail_parents
+      screen_detail_parents = screen_detail_parents,
+      collapsed_groups = collapsed_screen_groups()
     )
   })
 
