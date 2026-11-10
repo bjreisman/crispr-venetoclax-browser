@@ -24,18 +24,21 @@ eide_crispr_context <- external_context$eide_crispr
 zhang_library <- external_context$zhang_library
 
 screen_scores <- build_screen_scores(scores) |>
-  mutate(row_level = 0L, row_key = .data$screen_id)
+  mutate(row_level = 0L, row_key = .data$screen_id, baseline = FALSE)
 screen_detail_scores <- build_screen_scores(scores, build_screen_detail_registry(scores)) |>
-  mutate(row_level = 1L, row_key = .data$screen_id)
+  mutate(row_level = 1L, row_key = .data$screen_id, baseline = FALSE)
 expandable_papers <- sort(unique(screen_detail_scores$paper))
 screen_detail_parents <- unique(screen_detail_scores$parent_screen_id)
 paper_results <- build_paper_result_registry(scores, build_screen_detail_registry(scores))
 # Percentile is the x-axis of the Paper Explorer plot, so it is not a y option.
 paper_metric_choices <- screen_metric_choices[screen_metric_choices != "percentile"]
 screen_extra_group_choices <- c(
+  "Baseline dependency (DepMap, Lin2019)" = baseline_screen_group,
   "Other BH3 mimetics" = "Other BH3 mimetics",
   "CRISPRa, ORF, and BH3-priming assays" = "Other assays (direction not comparable)"
 )
+baseline_scores <- build_baseline_scores(scores, depmap_crispr) |>
+  mutate(row_level = 0L, row_key = .data$screen_id)
 
 experiment_stats <- scores |>
   group_by(.data$experiment_id) |>
@@ -151,7 +154,7 @@ ui <- page_navbar(
               "screen_extra_groups",
               "Also show",
               choices = screen_extra_group_choices,
-              selected = character()
+              selected = baseline_screen_group
             ),
             selectizeInput(
               "screen_expand_papers",
@@ -191,6 +194,8 @@ ui <- page_navbar(
             tags$span(HTML("<span style='color:#2a6fb0'>&#9679;</span> FDR ≤ 0.05 or paper threshold")),
             tags$span(HTML("<span style='color:#2a6fb0'>&#9675;</span> Not significant or no statistics")),
             tags$span(HTML("<span style='color:#2a6fb0'>&#9670;</span> In published hit list")),
+            tags$span(HTML("<span style='color:#6b6b6b'>&#9670;</span> Baseline dependency (DepMap gene effect ≤ −0.5)")),
+            tags$span(HTML("<span style='color:#6b6b6b'>&#9671;</span> Baseline: no dependency, or no threshold (Lin2019)")),
             uiOutput("gene_screen_band_note", inline = TRUE),
             tags$span("Blank: gene not measured or no value on this metric")
           ),
@@ -440,7 +445,7 @@ ui <- page_navbar(
         tags$li("Published gene-level scores are the primary cross-study layer."),
         tags$li("Raw count and sgRNA-level tables are exposed in source detail where local files support gene-level lookup."),
         tags$li("DepMap CRISPR KO gene-effect scores are from DepMap Public 26Q1 CRISPRGeneEffect.csv; more negative values indicate stronger baseline dependency."),
-        tags$li("DepMap 26Q1 direct matches are available for MOLM-13, THP-1, and OCI-LY19. OCI-Ly1 was not found in the 26Q1 model metadata."),
+        tags$li("DepMap 26Q1 direct matches are available for MOLM-13, MOLM-14, MV4-11, OCI-AML2, THP-1, and OCI-LY19. OCI-Ly1 was not found in the 26Q1 model metadata."),
         tags$li("BeatAML2 and Eide2023 ex vivo drug-response data are contextual patient/sample sensitivity measurements; lower AUC means greater sensitivity and these are not knockout effect sizes."),
         tags$li("BeatAML2 curated gene-set scores are contextual RNA-seq signatures computed as the mean of per-gene z-scored expression across member genes present in the public BeatAML2 expression matrix."),
         tags$li("Eide2023 CRISPR rows are computed from public GEO sgRNA count tables: counts are scaled to the median library size, sgRNA log2 fold-changes versus DMSO are summarized as the gene median, and gene effects are centered on the experiment median (the library has no non-targeting guides); no p-value or FDR is inferred from those counts in this browser."),
@@ -477,6 +482,12 @@ ui <- page_navbar(
     card(
       card_header("Changelog"),
         tags$dl(
+        tags$dt("2026-11-10 (v0.1.3)"),
+        tags$dd(
+          tags$ul(
+            tags$li(tags$strong("Baseline dependency in the Gene Explorer"), " — ", "The cross-paper chart now ends with a Baseline dependency group, shown by default under Also show: DepMap CRISPR gene effect in MOLM-13, MOLM-14, MV4-11, OCI-AML2, THP-1, and OCI-LY-19, and Lin2019 MOLM-13 and THP-1 essentiality. Each is scored within its own cell line, so a gene that cells need to grow sits on the sensitizing side, where it can look like a venetoclax sensitizer. Grey diamonds mark these rows; they are not counted in the screen summaries.")
+          )
+        ),
         tags$dt("2026-11-03"),
         tags$dd(
           tags$ul(
@@ -811,6 +822,14 @@ server <- function(input, output, session) {
   gene_screen_view <- reactive({
     req(length(selected_gene_keys()) > 0)
     groups <- c(venetoclax_screen_groups, input$screen_extra_groups)
+    baseline <- if (baseline_screen_group %in% groups) {
+      baseline_scores |>
+        filter(
+          .data$gene_key %in% selected_gene_keys(),
+          (.data$paper == "DepMap" & .data$cell_line %in% input$depmap_cell_lines) |
+            (.data$paper != "DepMap" & .data$paper %in% input$gene_papers)
+        )
+    }
     bind_rows(
       screen_scores,
       screen_detail_scores |> filter(.data$paper %in% input$screen_expand_papers)
@@ -819,7 +838,8 @@ server <- function(input, output, session) {
         .data$gene_key %in% selected_gene_keys(),
         .data$paper %in% input$gene_papers,
         .data$screen_group %in% groups
-      )
+      ) |>
+      bind_rows(baseline)
   })
 
   # Clicking a dot expands or collapses that paper's individual results.

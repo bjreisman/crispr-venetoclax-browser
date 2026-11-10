@@ -382,7 +382,7 @@ plot_external_crispr_rank <- function(df, top_n = 20) {
 # Returns keys (unique row ids) and display labels in top-to-bottom order.
 screen_panel_rows <- function(df, expandable_papers = character(), expanded_papers = character(),
                               screen_detail_parents = character()) {
-  reps <- screen_view_registry |>
+  reps <- bind_rows(screen_view_registry, baseline_registry) |>
     distinct(.data$screen_id, .data$paper, .data$screen_group, .data$short_label)
   children <- df |>
     filter(.data$row_level == 1) |>
@@ -417,8 +417,9 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
                                expandable_papers = character(), expanded_papers = character(),
                                screen_detail_parents = character()) {
   spec <- screen_metrics[[metric]]
+  if (!"baseline" %in% names(df)) df$baseline <- FALSE
   df <- df |>
-    mutate(value = .data[[spec$column]]) |>
+    mutate(value = .data[[spec$column]], baseline = dplyr::coalesce(.data$baseline, FALSE)) |>
     filter(!is.na(.data$value) | (spec$hit_list_column & .data$hit_list_only))
   if (!nrow(df)) return(plotly_empty(type = "scatter", mode = "markers"))
 
@@ -439,6 +440,8 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
     mutate(
       x = dplyr::if_else(spec$hit_list_column & .data$hit_list_only, hit_list_x, .data$value),
       marker = dplyr::case_when(
+        .data$baseline & .data$supported ~ "Baseline dependency (DepMap ≤ −0.5)",
+        .data$baseline ~ "Baseline: no dependency or no threshold",
         spec$hit_list_column & .data$hit_list_only ~ "In published hit list",
         .data$supported ~ "FDR ≤ 0.05 or paper threshold",
         TRUE ~ "Not significant or no statistics"
@@ -451,6 +454,7 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
           ""
         ),
         "<br>", .data$paper, " — ", .data$experiment,
+        dplyr::if_else(.data$baseline, "<br><i>Baseline growth dependency without drug, not a venetoclax response</i>", ""),
         dplyr::if_else(
           .data$hit_list_only,
           "<br>Listed in a published hit table (not genome-wide; no percentile or z-score)",
@@ -461,12 +465,13 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
         ),
         "<br>", .data$effect_metric, ": ", signif(.data$effect_value, 3),
         "<br>FDR: ", dplyr::case_when(
+          .data$baseline ~ "not applicable",
           is.na(.data$fdr) ~ "not reported",
           .data$fdr <= 0 ~ "reported as 0",
           TRUE ~ as.character(signif(.data$fdr, 3))
         ),
         dplyr::if_else(
-          is.na(.data$fdr) & !is.na(.data$published_fdr) | .data$published_effect != .data$effect_value,
+          dplyr::coalesce(is.na(.data$fdr) & !is.na(.data$published_fdr) | .data$published_effect != .data$effect_value, FALSE),
           paste0(
             "<br>As published: ", signif(.data$published_effect, 3),
             ", FDR ", signif(.data$published_fdr, 3), " (unnormalized; not counted as significant)"
@@ -481,7 +486,9 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
   marker_shapes <- c(
     "FDR ≤ 0.05 or paper threshold" = 16,
     "Not significant or no statistics" = 1,
-    "In published hit list" = 18
+    "In published hit list" = 18,
+    "Baseline dependency (DepMap ≤ −0.5)" = 18,
+    "Baseline: no dependency or no threshold" = 5
   )
 
   breaks <- if (identical(metric, "percentile")) c(-1, 0, 1) else pretty(value_range, n = 4)
@@ -501,7 +508,8 @@ plot_screen_panels <- function(df, gene_order = unique(df$gene_key), metric = "p
   }
   p <- p +
     geom_vline(xintercept = 0, color = "#b9b9b9", linewidth = 0.35) +
-    geom_point(data = dplyr::filter(plot_df, .data$row_level == 0), size = 3, color = "#2a6fb0", stroke = 1) +
+    geom_point(data = dplyr::filter(plot_df, .data$row_level == 0, !.data$baseline), size = 3, color = "#2a6fb0", stroke = 1) +
+    geom_point(data = dplyr::filter(plot_df, .data$baseline), size = 3, color = "#6b6b6b", stroke = 1) +
     geom_point(data = dplyr::filter(plot_df, .data$row_level == 1), size = 2.2, color = "#86a9cf", stroke = 0.8) +
     scale_shape_manual(values = marker_shapes, name = NULL, drop = FALSE) +
     scale_y_discrete(limits = rev(y_levels), labels = stats::setNames(rows$label, rows$key), drop = FALSE) +

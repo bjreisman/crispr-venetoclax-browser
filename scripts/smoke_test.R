@@ -393,7 +393,7 @@ if (!nrow(depmap_crispr)) {
   stop("DepMap CRISPR data are missing. Run scripts/build_depmap_data.R.")
 }
 
-expected_depmap_lines <- c("MOLM-13", "THP-1", "OCI-LY-19")
+expected_depmap_lines <- c("MOLM-13", "MOLM-14", "MV4-11", "OCI-AML2", "THP-1", "OCI-LY-19")
 missing_depmap_lines <- setdiff(expected_depmap_lines, unique(depmap_crispr$cell_line))
 if (length(missing_depmap_lines)) {
   stop("Missing expected DepMap cell lines: ", paste(missing_depmap_lines, collapse = ", "))

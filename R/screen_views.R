@@ -11,8 +11,11 @@ screen_view_groups <- c(
   "Venetoclax · lymphoid",
   "Venetoclax combinations",
   "Other BH3 mimetics",
-  "Other assays (direction not comparable)"
+  "Other assays (direction not comparable)",
+  "Baseline dependency"
 )
+
+baseline_screen_group <- "Baseline dependency"
 
 venetoclax_screen_groups <- screen_view_groups[1:3]
 
@@ -97,7 +100,7 @@ screen_metrics <- list(
     label = "Signed −log₁₀ FDR",
     column = "signed_log10_fdr",
     band = -log10(0.05),
-    band_note = paste0("Shaded: FDR ≤ 0.05, as published. FDR reported as 0 is drawn at ±", screen_fdr_cap, ". Stewart2026 venetoclax and combination FDRs are shown as published but not counted as significant."),
+    band_note = paste0("Shaded: FDR ≤ 0.05, as published. FDR reported as 0 is drawn at ±", screen_fdr_cap, ". Stewart2026 venetoclax and combination FDRs are shown as published but not counted as significant. Baseline dependency rows have no FDR and are hidden."),
     axis = "← sensitizing    signed −log₁₀ FDR as published (directional arm)    resistance →",
     hit_list_column = FALSE
   ),
@@ -105,7 +108,7 @@ screen_metrics <- list(
     label = "Raw effect (as published)",
     column = "published_effect",
     band = NA_real_,
-    band_note = "Raw effects as published, in each paper's own units; not comparable between screens. Stewart2026 venetoclax and combination values are unnormalized as published (median about −6).",
+    band_note = "Raw effects as published, in each paper's own units; not comparable between screens. Stewart2026 venetoclax and combination values are unnormalized as published (median about −6). DepMap rows show the gene effect (−0.5 or lower usually means a dependency); Lin2019 essentiality rows are hidden because their scores centre near 1.",
     axis = "← sensitizing    raw effect value as published (paper units)    resistance →",
     hit_list_column = FALSE
   )
@@ -365,4 +368,71 @@ paper_screen_buttons <- function(result_registry, paper) {
 
 paper_default_result <- function(result_registry, paper) {
   paper_screen_buttons(result_registry, paper)[[1]][[1]]$results$result_id[1]
+}
+
+# Baseline growth dependency rows for the Gene Explorer screen view: DepMap
+# CRISPR knockout gene effect per matched cell line and Lin2019 essentiality.
+# Each is scored within its own table, so strong dependencies sit on the
+# sensitizing (negative) side, where they would appear as false sensitizers.
+baseline_registry <- tibble::tribble(
+  ~screen_id, ~paper, ~cell_line, ~screen_group, ~short_label,
+  "baseline_depmap_molm13", "DepMap", "MOLM-13", baseline_screen_group, "DepMap · MOLM-13",
+  "baseline_depmap_molm14", "DepMap", "MOLM-14", baseline_screen_group, "DepMap · MOLM-14",
+  "baseline_depmap_mv411", "DepMap", "MV4-11", baseline_screen_group, "DepMap · MV4-11",
+  "baseline_depmap_ociaml2", "DepMap", "OCI-AML2", baseline_screen_group, "DepMap · OCI-AML2",
+  "baseline_depmap_thp1", "DepMap", "THP-1", baseline_screen_group, "DepMap · THP-1",
+  "baseline_depmap_ocily19", "DepMap", "OCI-LY-19", baseline_screen_group, "DepMap · OCI-LY-19",
+  "baseline_lin_molm13", "Lin2019", "MOLM-13", baseline_screen_group, "Lin 2019 · MOLM-13 essentiality (metabolic library)",
+  "baseline_lin_thp1", "Lin2019", "THP-1", baseline_screen_group, "Lin 2019 · THP-1 essentiality (metabolic library)"
+)
+
+baseline_within_table <- function(df) {
+  df |>
+    group_by(.data$screen_id) |>
+    mutate(
+      percentile = (rank(.data$effect_value, ties.method = "average") - 0.5) / dplyr::n() * 2 - 1,
+      robust_z = (.data$effect_value - stats::median(.data$effect_value)) / stats::mad(.data$effect_value),
+      screen_genes = dplyr::n()
+    ) |>
+    ungroup()
+}
+
+build_baseline_scores <- function(scores, depmap) {
+  depmap_rows <- depmap |>
+    filter(!is.na(.data$gene_effect)) |>
+    inner_join(baseline_registry |> filter(.data$paper == "DepMap"), by = "cell_line") |>
+    transmute(
+      .data$screen_id, .data$paper, .data$cell_line, .data$short_label,
+      experiment = paste(.data$depmap_release, "CRISPR gene effect,", .data$cell_line),
+      .data$gene_key, .data$gene_symbol,
+      effect_metric = "DepMap CRISPR gene effect (Chronos)",
+      effect_value = .data$gene_effect,
+      significance = .data$dependency_strength,
+      supported = .data$gene_effect <= -0.5,
+      # DepMap scores are on one scale across cell lines, so the raw metric keeps them.
+      published_effect = .data$gene_effect
+    )
+  lin_rows <- scores |>
+    filter(.data$paper == "Lin2019", .data$experiment %in% c("MOLM-13 essentiality", "THP-1 essentiality"), !is.na(.data$effect_value)) |>
+    mutate(cell_line = sub(" essentiality$", "", .data$experiment)) |>
+    inner_join(baseline_registry |> filter(.data$paper == "Lin2019") |> select(-"paper"), by = "cell_line") |>
+    transmute(
+      .data$screen_id, .data$paper, .data$cell_line, .data$short_label, .data$experiment,
+      .data$gene_key, .data$gene_symbol, .data$effect_metric, .data$effect_value,
+      significance = "no published dependency threshold",
+      supported = FALSE,
+      # Lin2019 three-scores centre near 1, not 0, so they have no raw-axis position.
+      published_effect = NA_real_
+    )
+  bind_rows(depmap_rows, lin_rows) |>
+    arrange(desc(abs(.data$effect_value))) |>
+    distinct(.data$screen_id, .data$gene_key, .keep_all = TRUE) |>
+    baseline_within_table() |>
+    mutate(
+      screen_group = factor(baseline_screen_group, levels = screen_view_groups),
+      hit_list_only = FALSE,
+      experiment_id = paste(.data$paper, .data$experiment, sep = " :: "),
+      p_value = NA_real_, fdr = NA_real_, published_fdr = NA_real_, signed_log10_fdr = NA_real_,
+      baseline = TRUE
+    )
 }

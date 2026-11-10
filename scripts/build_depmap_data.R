@@ -1,12 +1,39 @@
 source("R/load_data.R")
 
 depmap_dir <- file.path("data", "external", "depmap")
+full_effect_file <- file.path(depmap_dir, "CRISPRGeneEffect_26Q1.csv")
 selected_effect_file <- file.path(depmap_dir, "CRISPRGeneEffect_selected_26Q1.csv")
 model_file <- file.path(depmap_dir, "Model_26Q1.csv")
 out_file <- file.path("data", "processed", "depmap_crispr.rds")
 
-if (!file.exists(selected_effect_file)) {
-  stop("Missing ", selected_effect_file, ". Extract matched rows from CRISPRGeneEffect_26Q1.csv first.")
+# Study cell lines: lines screened in the included papers, plus common
+# venetoclax-screen AML lines (OCI-AML2, MV4-11, MOLM-14) for baseline context.
+study_cell_lines <- tibble::tribble(
+  ~study_cell_line, ~depmap_model_id, ~matching_note,
+  "MOLM-13", "ACH-000362", "direct match",
+  "MOLM-14", "ACH-001574", "direct match",
+  "MV4-11", "ACH-000045", "direct match",
+  "OCI-AML2", "ACH-000113", "direct match",
+  "THP-1", "ACH-000146", "direct match",
+  "OCI-LY19", "ACH-000124", "direct match",
+  "OCI-Ly1", NA_character_, "not present in DepMap Public 26Q1 Model.csv"
+)
+wanted_models <- stats::na.omit(study_cell_lines$depmap_model_id)
+
+# Extract the matched rows from the full matrix when the selected file is
+# missing or lacks a study model.
+selected_models <- if (file.exists(selected_effect_file)) {
+  data.table::fread(selected_effect_file, select = 1L)[[1]]
+} else character()
+if (!all(wanted_models %in% selected_models)) {
+  if (!file.exists(full_effect_file)) {
+    stop("Missing ", full_effect_file, ", needed to extract ", paste(setdiff(wanted_models, selected_models), collapse = ", "), ".")
+  }
+  full <- data.table::fread(full_effect_file)
+  full <- full[full[[1]] %in% wanted_models, ]
+  stopifnot(all(wanted_models %in% full[[1]]))
+  data.table::fwrite(full, selected_effect_file)
+  message("Extracted ", nrow(full), " models into ", selected_effect_file)
 }
 
 if (!file.exists(model_file)) {
@@ -22,14 +49,6 @@ model_map <- readr::read_csv(model_file, show_col_types = FALSE) |>
     oncotree_lineage = .data$OncotreeLineage,
     oncotree_primary_disease = .data$OncotreePrimaryDisease
   )
-
-study_cell_lines <- tibble::tribble(
-  ~study_cell_line, ~depmap_model_id, ~matching_note,
-  "MOLM-13", "ACH-000362", "direct match",
-  "THP-1", "ACH-000146", "direct match",
-  "OCI-LY19", "ACH-000124", "direct match",
-  "OCI-Ly1", NA_character_, "not present in DepMap Public 26Q1 Model.csv"
-)
 
 effect_matrix <- readr::read_csv(selected_effect_file, show_col_types = FALSE)
 names(effect_matrix)[1] <- "depmap_model_id"

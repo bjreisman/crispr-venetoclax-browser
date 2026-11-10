@@ -16,7 +16,7 @@ source("scripts/download_prepared_data.R") # once: downloads and verifies the re
 shiny::runApp(".")
 ```
 
-The dependency snapshot was generated with R 4.6.1. Run `renv::load()` again in each new R session to use the project library. System libraries required by R packages must be installed for your platform. The four prepared `.rds` caches are distributed with [release v0.1.2](https://github.com/bjreisman/crispr-venetoclax-browser/releases/tag/v0.1.2). The download script checks byte sizes and SHA-256 hashes against the versioned manifest, and skips already verified files. No raw supplements, Python environment, or analysis rebuild are needed. Startup reads the downloaded caches without rebuilding them based on timestamps.
+The dependency snapshot was generated with R 4.6.1. Run `renv::load()` again in each new R session to use the project library. System libraries required by R packages must be installed for your platform. The four prepared `.rds` caches are distributed with [release v0.1.3](https://github.com/bjreisman/crispr-venetoclax-browser/releases/tag/v0.1.3). The download script checks byte sizes and SHA-256 hashes against the versioned manifest, and skips already verified files. No raw supplements, Python environment, or analysis rebuild are needed. Startup reads the downloaded caches without rebuilding them based on timestamps.
 
 For an unpinned installation, `source("setup.R")` installs missing required packages from CRAN. Use `renv::restore()` for the recorded versions.
 
@@ -66,7 +66,7 @@ source("scripts/build_depmap_data.R")
 source("scripts/build_additional_screen_catalog.R")
 ```
 
-The DepMap builder expects `CRISPRGeneEffect_selected_26Q1.csv` containing the matched model rows and `Model_26Q1.csv` under `data/external/depmap/`. It does not download the full matrix automatically.
+The DepMap builder expects `Model_26Q1.csv` and either `CRISPRGeneEffect_selected_26Q1.csv` (the matched model rows) or the full `CRISPRGeneEffect_26Q1.csv` under `data/external/depmap/`; it extracts the matched rows from the full matrix when a study model is missing. It does not download DepMap files automatically.
 
 `scripts/smoke_test.R` performs the existing full analysis checks and **forces data rebuilding**. It requires raw inputs and the Nakao environment. `scripts/check_release.R` checks prepared caches and app startup without rebuilding or changing scientific results.
 

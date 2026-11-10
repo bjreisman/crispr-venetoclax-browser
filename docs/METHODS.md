@@ -20,6 +20,15 @@ The core cache contains sixteen studies. It combines survival-selection knockout
 
 These limitations affect interpretation and target prioritization. They do not prevent sharing the software as a work in progress. The next scientific milestones are in [PUBLICATION_PLAN.md](PUBLICATION_PLAN.md).
 
+## Gene Explorer baseline dependency rows
+
+The screen view ends with a "Baseline dependency" group, on by default under Also show. It holds DepMap Public 26Q1 CRISPR gene effect (Chronos) for MOLM-13, MOLM-14, MV4-11, OCI-AML2, THP-1, and OCI-LY-19, and the Lin2019 MOLM-13 and THP-1 essentiality three-scores (metabolism-focused library of about 2,300 genes).
+
+- Percentile and robust z are computed within each cell line's table, as for screens, so strong dependencies sit on the negative (sensitizing) side.
+- The raw metric shows the DepMap gene effect; Lin2019 rows are hidden there because three-scores centre near 1. The signed −log₁₀ FDR metric hides all baseline rows, which have no FDR.
+- Filled diamonds mark DepMap gene effect ≤ −0.5, DepMap's moderate-or-strong dependency range. Lin2019 rows have no published threshold.
+- The DepMap cell lines selector filters the DepMap rows. Baseline rows are not counted in the gene summaries.
+
 ## Paper Explorer
 
 The Paper Explorer shows one result at a time: one comparison, with MAGeCK positive- and negative-selection arms merged as in the Gene Explorer. Each screen is a sidebar button, grouped by screen group; a screen's timepoints, doses, replicates, and derived tables are small buttons inside it, led by the representative result used in the Gene Explorer, which opens by default. Lin2019 essentiality scores and the Stewart2026 palbociclib-only arm sit under "Other tables".
@@ -65,7 +74,7 @@ Diepstraten2026 contributes Partita CRISPR activation screens (10 sgRNAs per TSS
 
 Deng2022's genome-wide CRISPR activation screens use the published Supplementary Data 2 tables: significantly enriched sgRNAs from edgeR/voom, IC80 venetoclax (30 nM for line #214, 15 nM for #216) vs DMSO. They are imported as hit lists, with each gene key keeping its strongest guide (lowest FDR, then largest logFC). The raw counts in Supplementary Data 3 are heavily bottlenecked: fewer than 40% of guides are detected even before treatment, and about 1% after. They are not reanalyzed into genome-wide scores. CRISPRa is a gain-of-function perturbation, so enrichment means that activating the gene confers resistance; it is grouped with the ORF screen, not with the knockouts. The paper's lymphoma vs B-ALL RNA-seq comparison is not imported: it compares tumour types (8 vs 2 samples, sequenced on different platforms) rather than measuring venetoclax response, and it served to validate the lymphoma model.
 
-DepMap Public 26Q1 contributes baseline CRISPR gene effects for MOLM-13, THP-1, and OCI-LY19. OCI-Ly1 has no direct match in this layer. Baseline dependency is context, not a treatment-response effect or an established therapeutic window.
+DepMap Public 26Q1 contributes baseline CRISPR gene effects for MOLM-13, THP-1, and OCI-LY19, the screened lines, and for MOLM-14, MV4-11, and OCI-AML2, common venetoclax-study AML lines. OCI-Ly1 has no direct match in this layer. Baseline dependency is context, not a treatment-response effect or an established therapeutic window.
 
 Aliases group ADSS with ADSS2, ADSS1 with ADSSL1, and TOMM70A with TOMM70. ADSSL1 remains distinct from ADSS2.
 

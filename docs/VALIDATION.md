@@ -37,3 +37,11 @@ Release v0.1.2 was published on 3 November 2026 from `main` at c37e764 (merges o
 - `Rscript --vanilla scripts/check_release.R` passed: 884,653 rows, 16 studies, 68 displayed experiments, including app construction and the Gene Explorer screen-view, metric, and expansion server queries.
 
 Not checked: a clean dependency installation on another operating system, or a source rebuild of the BrimEdwards2026 results with edgeR.
+
+## v0.1.3 release (10 November 2026)
+
+v0.1.3 adds baseline DepMap context and redesigns the Paper Explorer. Only `depmap_crispr.rds` changed; `gene_scores.rds`, `external_context.rds`, and `additional_screen_candidates.rds` are byte-identical to v0.1.2.
+
+- `depmap_crispr.rds` was rebuilt from DepMap Public 26Q1 `CRISPRGeneEffect.csv` with MOLM-14 (ACH-001574), MV4-11 (ACH-000045), and OCI-AML2 (ACH-000113) added to MOLM-13, THP-1, and OCI-LY19: 111,186 rows. Gene effects for the three original lines match v0.1.2 to within 1e-14 (CSV round-trip); one gene key changed under the current alias rules (ADSS1 is keyed ADSSL1).
+- `Rscript --vanilla scripts/check_release.R` passed with the updated manifest, including Paper Explorer screen buttons for every paper and result, and the Gene Explorer baseline dependency rows (MCL1 in the DepMap tail, group off when unchecked).
+- `scripts/smoke_test.R` was not rerun: it forces a full source rebuild, and only the DepMap cache changed.
