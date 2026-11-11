@@ -16,7 +16,7 @@ source("scripts/download_prepared_data.R") # once: downloads and verifies the re
 shiny::runApp(".")
 ```
 
-The dependency snapshot was generated with R 4.6.1. Run `renv::load()` again in each new R session to use the project library. System libraries required by R packages must be installed for your platform. The four prepared `.rds` caches are distributed with [release v0.1.3](https://github.com/bjreisman/crispr-venetoclax-browser/releases/tag/v0.1.3). The download script checks byte sizes and SHA-256 hashes against the versioned manifest, and skips already verified files. No raw supplements, Python environment, or analysis rebuild are needed. Startup reads the downloaded caches without rebuilding them based on timestamps.
+The dependency snapshot was generated with R 4.6.1. Run `renv::load()` again in each new R session to use the project library. System libraries required by R packages must be installed for your platform. The four prepared `.rds` caches are distributed with [release v0.1.4](https://github.com/bjreisman/crispr-venetoclax-browser/releases/tag/v0.1.4). The download script checks byte sizes and SHA-256 hashes against the versioned manifest, and skips already verified files. No raw supplements, Python environment, or analysis rebuild are needed. Startup reads the downloaded caches without rebuilding them based on timestamps.
 
 For an unpinned installation, `source("setup.R")` installs missing required packages from CRAN. Use `renv::restore()` for the recorded versions.
 
