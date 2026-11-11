@@ -82,7 +82,15 @@ shiny::testServer(app_env$server, {
   stopifnot(baseline_screen_group %in% gene_screen_view()$screen_group)
   session$setInputs(gene_select = c("MCL1", "BAX"))
   base <- gene_screen_view()[gene_screen_view()$baseline, ]
-  stopifnot(all(base$percentile[base$gene_key == "MCL1" & base$paper == "DepMap"] < -0.9), all(base$supported[base$gene_key == "MCL1"]))
+  depmap_mcl1 <- base$percentile[base$gene_key == "MCL1" & base$paper == "DepMap"]
+  stopifnot(length(depmap_mcl1) == 3L, all(depmap_mcl1 < -0.9), all(base$supported[base$gene_key == "MCL1"]))
+  # Screens publish MARCH5, DepMap publishes MARCHF5: the alias table must join them.
+  session$setInputs(gene_select = "MARCHF5")
+  march5 <- gene_screen_view()
+  stopifnot(
+    sum(march5$baseline & march5$paper == "DepMap") >= 2L,
+    any(!march5$baseline & march5$paper != "DepMap")
+  )
   session$setInputs(gene_select = c("BAX", "TP53"))
   session$setInputs(screen_extra_groups = "Other BH3 mimetics")
   stopifnot("Other BH3 mimetics" %in% gene_screen_view()$screen_group, !any(gene_screen_view()$baseline))

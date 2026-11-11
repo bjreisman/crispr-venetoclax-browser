@@ -66,11 +66,32 @@ gene_symbol_key_aliases <- c(
   BCL2A1D = "BCL2A1"
 )
 
+# Withdrawn HGNC symbols still used by the published screen libraries (MARCH5, TAZ,
+# ATP5B, SEPT9, ...), mapped to the current symbols that DepMap and other reference data
+# use. Regenerate with scripts/build_gene_symbol_aliases.R.
+gene_symbol_alias_file <- file.path("data", "metadata", "gene_symbol_aliases.csv")
+gene_symbol_alias_cache <- new.env(parent = emptyenv())
+
+hgnc_symbol_aliases <- function() {
+  if (is.null(gene_symbol_alias_cache$map)) {
+    map <- character()
+    if (file.exists(gene_symbol_alias_file)) {
+      table <- readr::read_csv(gene_symbol_alias_file, col_types = readr::cols(.default = "c"))
+      map <- stats::setNames(table$to, table$from)
+    }
+    gene_symbol_alias_cache$map <- map
+  }
+  gene_symbol_alias_cache$map
+}
+
 gene_key <- function(x) {
   key <- normalize_gene_symbol(x) |>
     stringr::str_to_upper() |>
     stringr::str_replace_all("[^A-Z0-9]", "")
+  # Curated aliases win over the generated HGNC table.
   alias <- unname(gene_symbol_key_aliases[key])
+  renamed <- unname(hgnc_symbol_aliases()[key])
+  key <- dplyr::if_else(!is.na(renamed), renamed, key)
   dplyr::if_else(!is.na(alias), alias, key)
 }
 

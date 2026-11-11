@@ -486,6 +486,7 @@ ui <- page_navbar(
         tags$dt("2026-11-10"),
         tags$dd(
           tags$ul(
+            tags$li(tags$strong("Renamed genes now match their baseline dependency"), " — ", "The screens use the gene symbols of their day (MARCH5, TAZ, ATP5B) while DepMap uses the current ones (MARCHF5, TAFAZZIN, ATP5F1B), so 1,130 genes showed no baseline row. Searching either name now finds the gene, and the published symbol is still shown beside it."),
             tags$li(tags$strong("Fold screen groups"), " — ", "Click a group heading in the Gene Explorer, such as ▾ Venetoclax · AML, to fold its screens into one line and click it again to unfold them. Folding only changes the chart; the summaries above it still count every screen."),
             tags$li(tags$strong("Click a screen name to expand it"), " — ", "In the Gene Explorer, click a screen name marked ▸ to show its timepoints, replicates, and doses, and click ▾ to collapse it. Clicking one of its dots still works.")
           )

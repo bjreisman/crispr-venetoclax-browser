@@ -20,6 +20,27 @@ The core cache contains sixteen studies. It combines survival-selection knockout
 
 These limitations affect interpretation and target prioritization. They do not prevent sharing the software as a work in progress. The next scientific milestones are in [PUBLICATION_PLAN.md](PUBLICATION_PLAN.md).
 
+## Gene symbols
+
+Genes are matched across papers and against reference data by `gene_key`: the published
+symbol upper-cased with punctuation removed, then mapped through two alias tables in
+`R/tidy_sources.R`.
+
+- A short curated list handles cases HGNC does not cover, such as the mouse A1 paralogs
+  (`Bcl2a1a`–`Bcl2a1d`) that share the human ortholog BCL2A1.
+- `data/metadata/gene_symbol_aliases.csv` maps 1,130 withdrawn symbols to their current
+  HGNC symbols (MARCH5 → MARCHF5, TAZ → TAFAZZIN, GCN1L1 → GCN1, ATP5B → ATP5F1B,
+  SEPT9 → SEPTIN9). The screen libraries were built between 2015 and 2019 and keep the
+  old symbols; DepMap 26Q1 and the other reference tables use the current ones, so
+  without this mapping 785 genes — MARCH5 among them — had no baseline dependency row.
+  Regenerate the table with `scripts/build_gene_symbol_aliases.R`, which keeps only
+  unambiguous HGNC "previous symbol" entries that cannot merge two genes the libraries
+  targeted separately.
+
+The gene selector lists the published symbol with the canonical key in brackets
+("MARCH5 / March5 [MARCHF5]"), so either name finds the gene, and plots and tables show
+the symbol as each paper published it.
+
 ## Gene Explorer baseline dependency rows
 
 The screen view ends with a "Baseline dependency" group, on by default under Also show. It holds DepMap Public 26Q1 CRISPR gene effect (Chronos) for MOLM-13, MOLM-14, MV4-11, OCI-AML2, THP-1, and OCI-LY-19, and the Lin2019 MOLM-13 and THP-1 essentiality three-scores (metabolism-focused library of about 2,300 genes).
